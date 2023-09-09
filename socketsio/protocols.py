@@ -4,6 +4,8 @@ import socket
 from typing import Optional, Tuple, List
 from abc import ABCMeta, abstractmethod
 
+from represent import represent
+
 Connection = socket.socket
 Address = Tuple[str, int]
 
@@ -61,6 +63,7 @@ def bluetooth_socket() -> socket.socket:
     )
 # end bluetooth_socket
 
+@represent
 class BaseProtocol(metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
 

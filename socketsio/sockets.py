@@ -8,6 +8,8 @@ from socketsio.protocols import (
     base_socket, bluetooth_socket
 )
 
+from represent import represent
+
 __all__ = [
     "Socket",
     "base_socket",
@@ -19,6 +21,7 @@ __all__ = [
 Connection = socket.socket
 Address = Tuple[str, int]
 
+@represent
 class Socket:
     """A socket connection I/O object."""
 

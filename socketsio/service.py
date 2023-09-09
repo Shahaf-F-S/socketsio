@@ -5,6 +5,8 @@ import datetime as dt
 from typing import Dict, Optional, List, Tuple, Any, Callable, Union
 import threading
 
+from represent import represent
+
 from socketsio.protocols import BaseProtocol
 from socketsio.interface import ServiceInterface
 from socketsio.server import Server
@@ -18,6 +20,7 @@ Address = Tuple[str, int]
 Action = Callable[[Connection, Address, BaseProtocol], Any]
 Clients = Dict[Tuple[str, int], List[Connection]]
 
+@represent
 class Service(ServiceInterface):
     """The server object to control the communication ith multiple clients."""
 

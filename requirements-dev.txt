@@ -2,7 +2,4 @@ twine
 pytest
 pdic3
 
-requests
-dill
-
 pyrepresent
