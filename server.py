@@ -3,7 +3,7 @@
 import socket
 from typing import Tuple
 
-from socketsio import Server, TCP, BaseProtocol
+from socketsio import Server, TCP, BaseProtocol, BCP
 
 Connection = socket.socket
 Address = Tuple[str, int]
@@ -22,7 +22,20 @@ def respond(
     """
 
     while True:
-        received = protocol.receive(connection=connection, address=address)
+        try:
+            received = protocol.receive(connection=connection, address=address)
+
+        except (
+                ConnectionError,
+                ConnectionRefusedError,
+                ConnectionAbortedError,
+                ConnectionResetError
+        ) as e:
+            print(f"{type(e).__name__}: {str(e)}")
+
+            break
+        # end try
+
         if not received:
             continue
         # end if
@@ -39,7 +52,7 @@ def main() -> None:
     host = "127.0.0.1"
     port = 5555
 
-    protocol = TCP()
+    protocol = BCP(TCP())
 
     server = Server(protocol)
     server.bind((host, port))

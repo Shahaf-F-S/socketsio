@@ -283,12 +283,20 @@ class BCP(BaseProtocol):
             )
         # end if
 
+        total = 0
+
         for i in range(0, message_len, size):
             self.protocol.send(
                 connection=connection,
                 data=data[i:i + size],
                 address=address
             )
+
+            total += len(data[i:i + size])
+
+            if total == message_len:
+                return
+            # end if
         # end for
 
         if message_len % size:

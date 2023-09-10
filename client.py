@@ -1,6 +1,6 @@
 # client.py
 
-from socketsio import Client, TCP
+from socketsio import Client, TCP, BCP
 
 def main() -> None:
     """Runs the test to test the program."""
@@ -8,7 +8,7 @@ def main() -> None:
     host = "127.0.0.1"
     port = 5555
 
-    protocol = TCP()
+    protocol = BCP(TCP())
 
     client = Client(protocol)
     client.connect((host, port))
