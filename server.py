@@ -1,9 +1,12 @@
-# server.py
+# test.py
 
 import socket
 from typing import Tuple
 
-from socketsio import Server, TCP, BaseProtocol, BCP
+from socketsio import (
+    Server, BaseProtocol,
+    UDP, BCP, TCP, server_receive_from_client
+)
 
 Connection = socket.socket
 Address = Tuple[str, int]
@@ -23,7 +26,9 @@ def respond(
 
     while True:
         try:
-            received = protocol.receive(connection=connection, address=address)
+            received, address = server_receive_from_client(
+                connection=connection, protocol=protocol, address=address
+            )
 
         except (
                 ConnectionError,
@@ -44,21 +49,30 @@ def respond(
 
         protocol.send(connection=connection, data=sent, address=address)
     # end while
-# end action
+# end respond
+
+HOST = "127.0.0.1"
+PROTOCOL = 'UDP'
+PORT = 5000
 
 def main() -> None:
-    """Runs the test to test the program."""
+    """Tests the program."""
 
-    host = "127.0.0.1"
-    port = 5555
+    if PROTOCOL == 'UDP':
+        protocol = BCP(UDP())
 
-    protocol = BCP(TCP())
+    elif PROTOCOL == 'TCP':
+        protocol = BCP(TCP())
+
+    else:
+        raise ValueError(f"Invalid protocol type: {PROTOCOL}")
+    # end if
 
     server = Server(protocol)
-    server.bind((host, port))
+    server.bind((HOST, PORT))
     server.serve(action=respond, block=False)
 # end main
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 # end if

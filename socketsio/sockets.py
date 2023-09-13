@@ -5,14 +5,13 @@ from typing import Optional, Tuple
 
 from socketsio.protocols import (
     BaseProtocol, udp_socket, tcp_socket,
-    base_socket, bluetooth_socket
+    bluetooth_socket
 )
 
 from represent import represent
 
 __all__ = [
     "Socket",
-    "base_socket",
     "tcp_socket",
     "udp_socket",
     "bluetooth_socket"
@@ -61,23 +60,17 @@ class Socket:
         )
     # end send
 
-    def receive(
-            self,
-            connection: Optional[Connection] = None,
-            address: Optional[Address] = None
-    ) -> bytes:
+    def receive(self, connection: Optional[Connection] = None) -> bytes:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
 
         return self.protocol.receive(
-            connection=connection or self.connection,
-            address=address
+            connection=connection or self.connection
         )
     # end receive
 

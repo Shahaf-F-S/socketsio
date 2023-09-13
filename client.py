@@ -1,17 +1,26 @@
-# client.py
+# test.py
 
-from socketsio import Client, TCP, BCP
+from socketsio import Client, UDP, BCP, TCP
+
+HOST = "127.0.0.1"
+PROTOCOL = 'UDP'
+PORT = 5000
 
 def main() -> None:
-    """Runs the test to test the program."""
+    """Tests the program."""
 
-    host = "127.0.0.1"
-    port = 5555
+    if PROTOCOL == 'UDP':
+        protocol = BCP(UDP())
 
-    protocol = BCP(TCP())
+    elif PROTOCOL == 'TCP':
+        protocol = BCP(TCP())
+
+    else:
+        raise ValueError(f"Invalid protocol type: {PROTOCOL}")
+    # end if
 
     client = Client(protocol)
-    client.connect((host, port))
+    client.connect((HOST, PORT))
 
     for _ in range(2):
         client.send(("hello world" * 1).encode())
@@ -19,6 +28,6 @@ def main() -> None:
     # end for
 # end main
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 # end if

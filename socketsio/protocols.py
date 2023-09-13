@@ -1,7 +1,7 @@
 # protocols.py
 
 import socket
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Union
 from abc import ABCMeta, abstractmethod
 
 from represent import represent
@@ -15,21 +15,14 @@ __all__ = [
     "TCP",
     "UDP",
     "BCP",
-    "base_socket",
     "tcp_socket",
     "udp_socket",
-    "bluetooth_socket"
+    "bluetooth_socket",
+    "is_udp",
+    "is_tcp",
+    "is_tcp_bluetooth",
+    "server_receive_from_client"
 ]
-
-def base_socket() -> Connection:
-    """
-    Returns a new base socket object.
-
-    :return: The socket object.
-    """
-
-    return socket.socket()
-# end base_socket
 
 def tcp_socket() -> Connection:
     """
@@ -59,7 +52,8 @@ def bluetooth_socket() -> socket.socket:
     """
 
     return socket.socket(
-        socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+        socket.AF_BLUETOOTH, socket.SOCK_STREAM,
+        socket.BTPROTO_RFCOMM
     )
 # end bluetooth_socket
 
@@ -68,14 +62,13 @@ class BaseProtocol(metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
 
     @staticmethod
+    @abstractmethod
     def socket() -> Connection:
         """
         Returns a new base socket object.
 
         :return: The socket object.
         """
-
-        return base_socket()
     # end socket
 
     @abstractmethod
@@ -98,14 +91,12 @@ class BaseProtocol(metaclass=ABCMeta):
     def receive(
             self,
             connection: Connection,
-            address: Optional[Address] = None,
             buffer: Optional[int] = None
     ) -> bytes:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param address: The address of the sender.
         :param buffer: The buffer size to collect.
 
         :return: The received message from the server.
@@ -136,6 +127,17 @@ class BufferedProtocol(BaseProtocol, metaclass=ABCMeta):
 class TCP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
 
+    @staticmethod
+    def socket() -> Connection:
+        """
+        Returns a new base socket object.
+
+        :return: The socket object.
+        """
+
+        return tcp_socket()
+    # end socket
+
     def send(
             self,
             connection: Connection,
@@ -156,14 +158,12 @@ class TCP(BufferedProtocol):
     def receive(
             self,
             connection: Connection,
-            address: Optional[Address] = None,
             buffer: Optional[int] = None
     ) -> bytes:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param address: The address of the sender.
         :param buffer: The buffer size to collect.
 
         :return: The received message from the server.
@@ -175,6 +175,17 @@ class TCP(BufferedProtocol):
 
 class UDP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
+
+    @staticmethod
+    def socket() -> Connection:
+        """
+        Returns a new base socket object.
+
+        :return: The socket object.
+        """
+
+        return udp_socket()
+    # end socket
 
     def send(
             self,
@@ -200,22 +211,16 @@ class UDP(BufferedProtocol):
     def receive(
             self,
             connection: Connection,
-            address: Optional[Address] = None,
             buffer: Optional[int] = None
     ) -> bytes:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param address: The address of the sender.
         :param buffer: The buffer size to collect.
 
         :return: The received message from the server.
         """
-
-        if address is None:
-            raise ValueError("address must be a tuple of ip and port.")
-        # end if
 
         return connection.recvfrom(buffer or self.size)[0]
     # end receive
@@ -226,15 +231,55 @@ class BCP(BaseProtocol):
 
     HEADER = 32
 
-    def __init__(self, protocol: BufferedProtocol) -> None:
+    def __init__(
+            self,
+            protocol: Union[BaseProtocol, BufferedProtocol],
+            size: Optional[int] = None
+    ) -> None:
         """
         Defines the base protocol.
 
         :param protocol: The base protocol object to use.
+        :param size: The buffer size.
         """
 
         self.protocol = protocol
+
+        self._size = size
     # end __init__
+
+    @property
+    def size(self) -> int:
+        """
+        Returns the buffer size.
+
+        :return: The buffer size.
+        """
+
+        if self._size is None:
+            if not isinstance(self.protocol, BufferedProtocol):
+                raise ValueError(
+                    f"Size is not defined and protocol is "
+                    f"not a subclass of {BufferedProtocol}"
+                )
+            # end if
+
+            return self.protocol.size
+        # end if
+
+        return self._size
+    # end size
+
+    @size.setter
+    def size(self, value: int) -> None:
+        """
+        Returns the buffer size.
+
+        :param value: The buffer size.
+        """
+
+        self._size = value
+    # end size
 
     def socket(self) -> Connection:
         """
@@ -262,7 +307,7 @@ class BCP(BaseProtocol):
 
         message_len = len(data)
 
-        size = self.protocol.size
+        size = self.size
 
         length_message = (
             str(message_len) +
@@ -270,15 +315,13 @@ class BCP(BaseProtocol):
         ).encode()
 
         self.protocol.send(
-            connection=connection,
-            data=length_message,
+            connection=connection, data=length_message,
             address=address
         )
 
         if size >= message_len:
             return self.protocol.send(
-                connection=connection,
-                data=data,
+                connection=connection, data=data,
                 address=address
             )
         # end if
@@ -287,8 +330,7 @@ class BCP(BaseProtocol):
 
         for i in range(0, message_len, size):
             self.protocol.send(
-                connection=connection,
-                data=data[i:i + size],
+                connection=connection, data=data[i:i + size],
                 address=address
             )
 
@@ -301,8 +343,7 @@ class BCP(BaseProtocol):
 
         if message_len % size:
             self.protocol.send(
-                connection=connection,
-                data=data[-(message_len % size):],
+                connection=connection, data=data[-(message_len % size):],
                 address=address
             )
         # end if
@@ -312,7 +353,8 @@ class BCP(BaseProtocol):
             self,
             connection: Connection,
             address: Optional[Address] = None,
-            buffer: Optional[int] = None
+            buffer: Optional[int] = None,
+            length: Optional[int] = None
     ) -> bytes:
         """
         Receive a message from the client or server by its connection.
@@ -320,50 +362,44 @@ class BCP(BaseProtocol):
         :param connection: The sockets' connection object.
         :param address: The address of the sender.
         :param buffer: The buffer size to collect.
+        :param length: The length of the message to expect.
 
         :return: The received message from the server.
         """
 
-        length_message = self.protocol.receive(
-            connection=connection,
-            address=address,
-            buffer=self.HEADER
-        ).decode()
+        if length is None:
+            length_message = self.protocol.receive(
+                connection=connection, buffer=self.HEADER
+            ).decode()
 
-        if not length_message or length_message == '0':
-            return b''
+            if not length_message or length_message == '0':
+                return b''
+
+            length = int(length_message[:length_message.find(" ")])
         # end if
 
-        message_len = int(length_message[:length_message.find(" ")])
+        size = buffer or self.size
 
-        size = buffer or self.protocol.size
-
-        if size >= message_len:
+        if size >= length:
             return self.protocol.receive(
-                connection=connection,
-                address=address,
-                buffer=message_len
+                connection=connection, buffer=length
             )
         # end if
 
         data: List[bytes] = []
 
-        for _ in range(message_len // size):
+        for _ in range(length // size):
             data.append(
                 self.protocol.receive(
-                    connection=connection,
-                    address=address,
-                    buffer=size
+                    connection=connection, buffer=size
                 )
             )
         # end for
 
-        if message_len % size:
+        if length % size:
             data.append(
                 self.protocol.receive(
-                    connection=connection,
-                    address=address,
-                    buffer=message_len % size
+                    connection=connection, buffer=length % size
                 )
             )
         # end if
@@ -371,3 +407,85 @@ class BCP(BaseProtocol):
         return b''.join(data)
     # end receive
 # end BCP
+
+def is_tcp(connection: Connection) -> bool:
+    """
+    Checks if the socket is a TCP socket.
+
+    :param connection: The socket connection object.
+
+    :return: The boolean flag.
+    """
+
+    return connection.type == socket.SOCK_STREAM
+    # end is_tcp
+
+def is_udp(connection: Connection) -> bool:
+    """
+    Checks if the socket is a UDP socket.
+
+    :param connection: The socket connection object.
+
+    :return: The boolean flag.
+    """
+
+    return connection.type == socket.SOCK_DGRAM
+    # end is_udp
+
+def is_tcp_bluetooth(connection: Connection) -> bool:
+    """
+    Checks if the socket is a UDP socket.
+
+    :param connection: The socket connection object.
+
+    :return: The boolean flag.
+    """
+
+    return is_tcp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
+# end is_tcp_bluetooth
+
+def server_receive_from_client(
+        connection: Connection,
+        protocol: BaseProtocol,
+        address: Optional[Address] = None,
+        buffer: Optional[int] = None
+) -> Tuple[bytes, Address]:
+    """
+    Receives the message and address from the client and returns the data.
+
+    :param connection: The socket connection object.
+    :param protocol: The protocol object.
+    :param address: The address to use.
+    :param buffer: The buffer size to collect.
+
+    :return: The received data and address.
+    """
+
+    if isinstance(protocol, (BufferedProtocol, BCP)):
+        buffer = buffer or protocol.size
+    # end if
+
+    if is_udp(connection):
+        length, address = connection.recvfrom(buffer)
+        length = length.decode()
+        length = int(length[:length.find(" ")])
+
+        if isinstance(protocol, BCP):
+            received = protocol.receive(connection=connection, length=length)
+
+        elif isinstance(protocol, UDP):
+            received = protocol.receive(connection=connection, buffer=buffer)
+
+        else:
+            raise ValueError(
+                f"Unable to handle UDP socket "
+                f"and non-UDP protocol: {protocol}"
+            )
+        # end if
+
+    else:
+        received = protocol.receive(connection=connection)
+    # end if
+
+    return received, address
+# end server_receive_from_client

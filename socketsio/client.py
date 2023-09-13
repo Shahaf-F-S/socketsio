@@ -91,23 +91,17 @@ class Client(Socket):
         )
     # end send
 
-    def receive(
-            self,
-            connection: Optional[Connection] = None,
-            address: Optional[Address] = None
-    ) -> bytes:
+    def receive(self, connection: Optional[Connection] = None) -> bytes:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
 
         return self.protocol.receive(
-            connection=connection or self.connection,
-            address=address or self._address
+            connection=connection or self.connection
         )
     # end receive
 # end Client

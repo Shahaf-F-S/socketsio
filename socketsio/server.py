@@ -2,10 +2,10 @@
 
 import socket
 import time
-from typing import Dict, Optional, List, Tuple, Any, Callable, Union
+from typing import Dict, Optional, List, Tuple, Any, Callable
 import threading
 
-from socketsio.protocols import BaseProtocol
+from socketsio.protocols import BaseProtocol, is_tcp, is_tcp_bluetooth, is_udp
 from socketsio.sockets import Socket
 
 __all__ = [
@@ -25,27 +25,16 @@ class Server(Socket):
     def __init__(
             self,
             protocol: BaseProtocol,
-            connection: Optional[Connection] = None,
-            clients: Optional[Union[Clients, bool]] = None
+            connection: Optional[Connection] = None
     ) -> None:
         """
         Defines the attributes of a server.
 
         :param connection: The socket object of the server.
         :param protocol: The communication protocol object.
-        :param clients: The client's collection.
         """
 
         super().__init__(connection=connection, protocol=protocol)
-
-        if clients in (True, None):
-            clients = {}
-
-        elif clients is False:
-            clients = None
-        # end if
-
-        self.clients: Optional[Clients] = clients
 
         self._listening = False
         self._bound = False
@@ -88,6 +77,36 @@ class Server(Socket):
         return self._address
     # end address
 
+    def is_tcp(self) -> bool:
+        """
+        Checks if the socket is a TCP socket.
+
+        :return: The boolean flag.
+        """
+
+        return is_tcp(self.connection)
+    # end is_tcp
+
+    def is_udp(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return is_udp(self.connection)
+    # end is_udp
+
+    def is_tcp_bluetooth(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return is_tcp_bluetooth(self.connection)
+    # end is_tcp_bluetooth
+
     def bind(self, address: Address) -> None:
         """
         Binds the connection of the server.
@@ -113,7 +132,7 @@ class Server(Socket):
     def validate_listening(self) -> None:
         """Validates the binding of the socket."""
 
-        if not self.listening:
+        if not self.is_udp() and (not self.listening):
             self.listen()
         # end if
     # end validate_binding
@@ -133,41 +152,26 @@ class Server(Socket):
     def handle(
             self,
             protocol: Optional[BaseProtocol] = None,
-            action: Optional[Action] = None,
-            clients: Optional[Clients] = None,
-            remove: Optional[bool] = True
+            action: Optional[Action] = None
     ) -> None:
         """
         Sends a message to the client by its connection.
 
         :param protocol: The protocol to use for sockets communication.
         :param action: The action to call.
-        :param clients: The client's collection.
-        :param remove: The value to remove clients after each response.
         """
-
-        if clients is None:
-            clients = self.clients
-        # end if
 
         protocol = protocol or self.protocol
         action = action or self.action
 
-        connection, address = self.accept()
+        if self.is_udp():
+            connection, address = self.connection, None
 
-        if clients is not None:
-            clients.setdefault(address, []).append(connection)
+        else:
+            connection, address = self.accept()
         # end if
 
         action(connection, address, protocol)
-
-        if remove and (clients is not None):
-            clients.get(address).remove(connection)
-
-            if not clients.get(address):
-                clients.pop(address)
-            # end if
-        # end if
     # end handle
 
     def action(
@@ -198,22 +202,14 @@ class Server(Socket):
     def _serve(
             self,
             protocol: Optional[BaseProtocol] = None,
-            action: Optional[Action] = None,
-            clients: Optional[Clients] = None,
-            remove: Optional[bool] = True
+            action: Optional[Action] = None
     ) -> None:
         """
         Runs the threads to serving_loop to clients with requests.
 
         :param action: The action to call.
         :param protocol: The protocol to use for sockets communication.
-        :param clients: The client's collection.
-        :param remove: The value to remove clients after each response.
         """
-
-        if clients is None:
-            clients = self.clients
-        # end if
 
         self.validate_listening()
 
@@ -222,10 +218,10 @@ class Server(Socket):
         while self.handling:
             threading.Thread(
                 target=lambda: self.handle(
-                    clients=clients, remove=remove,
                     protocol=protocol, action=action
                 )
             ).start()
+            break
         # end while
     # end _serve
 
@@ -233,8 +229,6 @@ class Server(Socket):
             self,
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None,
-            clients: Optional[Clients] = None,
-            remove: Optional[bool] = True,
             block: Optional[bool] = True
     ) -> None:
         """
@@ -242,22 +236,15 @@ class Server(Socket):
 
         :param action: The action to call.
         :param protocol: The protocol to use for sockets communication.
-        :param clients: The client's collection.
-        :param remove: The value to remove clients after each response.
         :param block: The value to block the process.
         """
 
-        parameters = dict(
-            protocol=protocol, action=action,
-            clients=clients, remove=remove
-        )
-
         if block:
-            self._serve(**parameters)
+            self._serve(protocol=protocol, action=action)
 
         else:
             threading.Thread(
-                target=lambda: self._serve(**parameters)
+                target=lambda: self._serve(protocol=protocol, action=action)
             ).start()
 
             self.await_handling()
