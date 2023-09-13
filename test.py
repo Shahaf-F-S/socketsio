@@ -4,8 +4,8 @@ import socket
 from typing import Tuple
 
 from socketsio import (
-    Client, Server, BaseProtocol,
-    UDP, BCP, TCP, server_receive_from_client
+    Client, Server, BaseProtocol, BCP, TCP, UDP,
+    server_receive_from_client
 )
 
 Connection = socket.socket
@@ -52,14 +52,14 @@ def respond(
 # end respond
 
 HOST = "127.0.0.1"
-PROTOCOL = 'UDP'
+PROTOCOL = 'TCP'
 PORT = 5000
 
 def main() -> None:
     """Tests the program."""
 
     if PROTOCOL == 'UDP':
-        protocol = BCP(UDP())
+        protocol = UDP()
 
     elif PROTOCOL == 'TCP':
         protocol = BCP(TCP())
@@ -70,7 +70,7 @@ def main() -> None:
 
     server = Server(protocol)
     server.bind((HOST, PORT))
-    server.serve(action=respond, block=False)
+    server.serve(action=respond, block=False, sequential=True)
 
     client = Client(protocol)
     client.connect((HOST, PORT))

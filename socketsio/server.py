@@ -2,20 +2,63 @@
 
 import socket
 import time
-from typing import Dict, Optional, List, Tuple, Any, Callable
+from typing import (
+    Optional, Tuple, Any, Callable
+)
 import threading
 
-from socketsio.protocols import BaseProtocol, is_tcp, is_tcp_bluetooth, is_udp
+from socketsio.protocols import (
+    BaseProtocol, is_udp, UDP, BufferedProtocol, BCP
+)
 from socketsio.sockets import Socket
 
 __all__ = [
-    "Server"
+    "Server",
+    "server_receive_from_client"
 ]
 
 Connection = socket.socket
 Address = Tuple[str, int]
 Action = Callable[[Connection, Address, BaseProtocol], Any]
-Clients = Dict[Tuple[str, int], List[Connection]]
+
+def server_receive_from_client(
+        connection: Connection,
+        protocol: BaseProtocol,
+        address: Optional[Address] = None,
+        buffer: Optional[int] = None
+) -> Tuple[bytes, Address]:
+    """
+    Receives the message and address from the client and returns the data.
+
+    :param connection: The socket connection object.
+    :param protocol: The protocol object.
+    :param address: The address to use.
+    :param buffer: The buffer size to collect.
+
+    :return: The received data and address.
+    """
+
+    if isinstance(protocol, (BufferedProtocol, BCP)):
+        buffer = buffer or protocol.size
+    # end if
+
+    if is_udp(connection):
+        if isinstance(protocol, UDP):
+            received, address = connection.recvfrom(buffer)
+
+        else:
+            raise ValueError(
+                f"Unable to handle UDP socket "
+                f"and non-UDP protocol: {protocol}"
+            )
+        # end if
+
+    else:
+        received = protocol.receive(connection=connection)
+    # end if
+
+    return received, address
+# end server_receive_from_client
 
 class Server(Socket):
     """A class to represent the server object."""
@@ -77,36 +120,6 @@ class Server(Socket):
         return self._address
     # end address
 
-    def is_tcp(self) -> bool:
-        """
-        Checks if the socket is a TCP socket.
-
-        :return: The boolean flag.
-        """
-
-        return is_tcp(self.connection)
-    # end is_tcp
-
-    def is_udp(self) -> bool:
-        """
-        Checks if the socket is a UDP socket.
-
-        :return: The boolean flag.
-        """
-
-        return is_udp(self.connection)
-    # end is_udp
-
-    def is_tcp_bluetooth(self) -> bool:
-        """
-        Checks if the socket is a UDP socket.
-
-        :return: The boolean flag.
-        """
-
-        return is_tcp_bluetooth(self.connection)
-    # end is_tcp_bluetooth
-
     def bind(self, address: Address) -> None:
         """
         Binds the connection of the server.
@@ -149,6 +162,28 @@ class Server(Socket):
         return self.connection.accept()
     # end accept
 
+    def action_parameters(
+            self,
+            protocol: Optional[BaseProtocol] = None
+    ) -> Tuple[Connection, Address, BaseProtocol]:
+        """
+        Returns the parameters to call the action function.
+
+        :return: The action parameters.
+        """
+
+        protocol = protocol or self.protocol
+
+        if self.is_udp():
+            connection, address = self.connection, None
+
+        else:
+            connection, address = self.accept()
+        # end if
+
+        return connection, address, protocol
+    # end action_parameters
+
     def handle(
             self,
             protocol: Optional[BaseProtocol] = None,
@@ -161,17 +196,7 @@ class Server(Socket):
         :param action: The action to call.
         """
 
-        protocol = protocol or self.protocol
-        action = action or self.action
-
-        if self.is_udp():
-            connection, address = self.connection, None
-
-        else:
-            connection, address = self.accept()
-        # end if
-
-        action(connection, address, protocol)
+        action(*self.action_parameters(protocol=protocol))
     # end handle
 
     def action(
@@ -202,13 +227,15 @@ class Server(Socket):
     def _serve(
             self,
             protocol: Optional[BaseProtocol] = None,
-            action: Optional[Action] = None
+            action: Optional[Action] = None,
+            sequential: Optional[bool] = False
     ) -> None:
         """
         Runs the threads to serving_loop to clients with requests.
 
         :param action: The action to call.
         :param protocol: The protocol to use for sockets communication.
+        :param sequential: The value to sequentially find clients.
         """
 
         self.validate_listening()
@@ -216,12 +243,20 @@ class Server(Socket):
         self.handling = True
 
         while self.handling:
-            threading.Thread(
-                target=lambda: self.handle(
-                    protocol=protocol, action=action
-                )
-            ).start()
-            break
+            if sequential:
+                parameters = self.action_parameters(protocol=protocol)
+
+                threading.Thread(
+                    target=lambda: action(*parameters)
+                ).start()
+
+            else:
+                threading.Thread(
+                    target=lambda: self.handle(
+                        protocol=protocol, action=action
+                    )
+                ).start()
+            # end if
         # end while
     # end _serve
 
@@ -229,7 +264,8 @@ class Server(Socket):
             self,
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None,
-            block: Optional[bool] = True
+            block: Optional[bool] = True,
+            sequential: Optional[bool] = False
     ) -> None:
         """
         Runs the threads to serving_loop to clients with requests.
@@ -237,14 +273,21 @@ class Server(Socket):
         :param action: The action to call.
         :param protocol: The protocol to use for sockets communication.
         :param block: The value to block the process.
+        :param sequential: The value to sequentially find clients.
         """
 
         if block:
-            self._serve(protocol=protocol, action=action)
+            self._serve(
+                protocol=protocol, action=action,
+                sequential=sequential
+            )
 
         else:
             threading.Thread(
-                target=lambda: self._serve(protocol=protocol, action=action)
+                target=lambda: self._serve(
+                    protocol=protocol, action=action,
+                    sequential=sequential
+                )
             ).start()
 
             self.await_handling()

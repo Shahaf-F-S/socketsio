@@ -1,16 +1,16 @@
 # test.py
 
-from socketsio import Client, UDP, BCP, TCP
+from socketsio import Client, BCP, TCP, UDP
 
 HOST = "127.0.0.1"
-PROTOCOL = 'UDP'
+PROTOCOL = 'TCP'
 PORT = 5000
 
 def main() -> None:
     """Tests the program."""
 
     if PROTOCOL == 'UDP':
-        protocol = BCP(UDP())
+        protocol = UDP()
 
     elif PROTOCOL == 'TCP':
         protocol = BCP(TCP())

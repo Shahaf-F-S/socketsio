@@ -1,7 +1,7 @@
 # protocols.py
 
 import socket
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List
 from abc import ABCMeta, abstractmethod
 
 from represent import represent
@@ -20,8 +20,7 @@ __all__ = [
     "bluetooth_socket",
     "is_udp",
     "is_tcp",
-    "is_tcp_bluetooth",
-    "server_receive_from_client"
+    "is_tcp_bluetooth"
 ]
 
 def tcp_socket() -> Connection:
@@ -231,11 +230,7 @@ class BCP(BaseProtocol):
 
     HEADER = 32
 
-    def __init__(
-            self,
-            protocol: Union[BaseProtocol, BufferedProtocol],
-            size: Optional[int] = None
-    ) -> None:
+    def __init__(self, protocol: TCP, size: Optional[int] = None) -> None:
         """
         Defines the base protocol.
 
@@ -443,49 +438,3 @@ def is_tcp_bluetooth(connection: Connection) -> bool:
 
     return is_tcp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
 # end is_tcp_bluetooth
-
-def server_receive_from_client(
-        connection: Connection,
-        protocol: BaseProtocol,
-        address: Optional[Address] = None,
-        buffer: Optional[int] = None
-) -> Tuple[bytes, Address]:
-    """
-    Receives the message and address from the client and returns the data.
-
-    :param connection: The socket connection object.
-    :param protocol: The protocol object.
-    :param address: The address to use.
-    :param buffer: The buffer size to collect.
-
-    :return: The received data and address.
-    """
-
-    if isinstance(protocol, (BufferedProtocol, BCP)):
-        buffer = buffer or protocol.size
-    # end if
-
-    if is_udp(connection):
-        length, address = connection.recvfrom(buffer)
-        length = length.decode()
-        length = int(length[:length.find(" ")])
-
-        if isinstance(protocol, BCP):
-            received = protocol.receive(connection=connection, length=length)
-
-        elif isinstance(protocol, UDP):
-            received = protocol.receive(connection=connection, buffer=buffer)
-
-        else:
-            raise ValueError(
-                f"Unable to handle UDP socket "
-                f"and non-UDP protocol: {protocol}"
-            )
-        # end if
-
-    else:
-        received = protocol.receive(connection=connection)
-    # end if
-
-    return received, address
-# end server_receive_from_client

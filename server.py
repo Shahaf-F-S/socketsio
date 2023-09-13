@@ -4,8 +4,8 @@ import socket
 from typing import Tuple
 
 from socketsio import (
-    Server, BaseProtocol,
-    UDP, BCP, TCP, server_receive_from_client
+    Server, BaseProtocol, BCP, TCP, UDP,
+    server_receive_from_client
 )
 
 Connection = socket.socket
@@ -31,10 +31,10 @@ def respond(
             )
 
         except (
-            ConnectionError,
-            ConnectionRefusedError,
-            ConnectionAbortedError,
-            ConnectionResetError
+                ConnectionError,
+                ConnectionRefusedError,
+                ConnectionAbortedError,
+                ConnectionResetError
         ) as e:
             print(f"{type(e).__name__}: {str(e)}")
 
@@ -52,14 +52,14 @@ def respond(
 # end respond
 
 HOST = "127.0.0.1"
-PROTOCOL = 'UDP'
+PROTOCOL = 'TCP'
 PORT = 5000
 
 def main() -> None:
     """Tests the program."""
 
     if PROTOCOL == 'UDP':
-        protocol = BCP(UDP())
+        protocol = UDP()
 
     elif PROTOCOL == 'TCP':
         protocol = BCP(TCP())
@@ -70,7 +70,7 @@ def main() -> None:
 
     server = Server(protocol)
     server.bind((HOST, PORT))
-    server.serve(action=respond, block=False)
+    server.serve(action=respond, block=False, sequential=True)
 # end main
 
 if __name__ == '__main__':
