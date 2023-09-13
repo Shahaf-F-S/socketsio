@@ -31,10 +31,10 @@ def respond(
             )
 
         except (
-                ConnectionError,
-                ConnectionRefusedError,
-                ConnectionAbortedError,
-                ConnectionResetError
+            ConnectionError,
+            ConnectionRefusedError,
+            ConnectionAbortedError,
+            ConnectionResetError
         ) as e:
             print(f"{type(e).__name__}: {str(e)}")
 
