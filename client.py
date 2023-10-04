@@ -1,4 +1,4 @@
-# test.py
+# client.py
 
 from socketsio import Client, BCP, TCP, UDP
 
@@ -24,7 +24,7 @@ def main() -> None:
 
     for _ in range(2):
         client.send(("hello world" * 1).encode())
-        print(client.receive())
+        print("client:", client.receive())
     # end for
 # end main
 

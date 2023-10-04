@@ -76,7 +76,7 @@ class BaseProtocol(metaclass=ABCMeta):
             connection: Connection,
             data: bytes,
             address: Optional[Address] = None
-    ) -> None:
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Sends a message to the client or server by its connection.
 
@@ -90,13 +90,15 @@ class BaseProtocol(metaclass=ABCMeta):
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None
-    ) -> bytes:
+            buffer: Optional[int] = None,
+            address: Optional[Address] = None
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param buffer: The buffer size to collect.
+        :param buffer: The buffer size to collect.\
+        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
@@ -142,7 +144,7 @@ class TCP(BufferedProtocol):
             connection: Connection,
             data: bytes,
             address: Optional[Address] = None
-    ) -> None:
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Sends a message to the client or server by its connection.
 
@@ -152,23 +154,27 @@ class TCP(BufferedProtocol):
         """
 
         connection.send(data)
+
+        return data, address
     # end send
 
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None
-    ) -> bytes:
+            buffer: Optional[int] = None,
+            address: Optional[Address] = None
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
         :param buffer: The buffer size to collect.
+        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
 
-        return connection.recv(buffer or self.size)
+        return connection.recv(buffer or self.size), address
     # end receive
 # end TCP
 
@@ -191,7 +197,7 @@ class UDP(BufferedProtocol):
             connection: Connection,
             data: bytes,
             address: Optional[Address] = None
-    ) -> None:
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Sends a message to the client or server by its connection.
 
@@ -205,23 +211,27 @@ class UDP(BufferedProtocol):
         # end if
 
         connection.sendto(data, address)
+
+        return data, address
     # end send
 
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None
-    ) -> bytes:
+            buffer: Optional[int] = None,
+            address: Optional[Address] = None
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
         :param buffer: The buffer size to collect.
+        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
 
-        return connection.recvfrom(buffer or self.size)[0]
+        return connection.recvfrom(buffer or self.size)
     # end receive
 # end UDP
 
@@ -291,7 +301,7 @@ class BCP(BaseProtocol):
             connection: Connection,
             data: bytes,
             address: Optional[Address] = None
-    ) -> None:
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Sends a message to the client or server by its connection.
 
@@ -332,7 +342,7 @@ class BCP(BaseProtocol):
             total += len(data[i:i + size])
 
             if total == message_len:
-                return
+                return data, address
             # end if
         # end for
 
@@ -347,28 +357,30 @@ class BCP(BaseProtocol):
     def receive(
             self,
             connection: Connection,
-            address: Optional[Address] = None,
             buffer: Optional[int] = None,
-            length: Optional[int] = None
-    ) -> bytes:
+            length: Optional[int] = None,
+            address: Optional[Address] = None
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param address: The address of the sender.
         :param buffer: The buffer size to collect.
         :param length: The length of the message to expect.
+        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
 
         if length is None:
-            length_message = self.protocol.receive(
-                connection=connection, buffer=self.HEADER
-            ).decode()
+            message, address = self.protocol.receive(
+                connection=connection, buffer=self.HEADER, address=address
+            )
+            length_message = message.decode()
 
             if not length_message or length_message == '0':
-                return b''
+                return b'', address
+            # end if
 
             length = int(length_message[:length_message.find(" ")])
         # end if
@@ -377,29 +389,29 @@ class BCP(BaseProtocol):
 
         if size >= length:
             return self.protocol.receive(
-                connection=connection, buffer=length
+                connection=connection, buffer=length, address=address
             )
         # end if
 
         data: List[bytes] = []
 
         for _ in range(length // size):
-            data.append(
-                self.protocol.receive(
-                    connection=connection, buffer=size
-                )
+            payload, address = self.protocol.receive(
+                connection=connection, buffer=size, address=address
             )
+
+            data.append(payload)
         # end for
 
         if length % size:
-            data.append(
-                self.protocol.receive(
-                    connection=connection, buffer=length % size
-                )
+            payload, address = self.protocol.receive(
+                connection=connection, buffer=length % size, address=address
             )
+
+            data.append(payload)
         # end if
 
-        return b''.join(data)
+        return b''.join(data), address
     # end receive
 # end BCP
 

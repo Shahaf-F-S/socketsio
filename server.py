@@ -1,21 +1,16 @@
-# test.py
+# server.py
 
 import socket
 from typing import Tuple
 
 from socketsio import (
-    Server, BaseProtocol, BCP, TCP, UDP,
-    server_receive_from_client
+    Server, BaseProtocol, BCP, TCP, UDP, handler
 )
 
 Connection = socket.socket
 Address = Tuple[str, int]
 
-def respond(
-        connection: Connection,
-        address: Address,
-        protocol: BaseProtocol
-) -> None:
+def action(connection: Connection, address: Address, protocol: BaseProtocol) -> None:
     """
     Sets or updates clients data in the clients' container .
 
@@ -24,32 +19,22 @@ def respond(
     :param address: The address of the connection.
     """
 
-    while True:
-        try:
-            received, address = server_receive_from_client(
-                connection=connection, protocol=protocol, address=address
-            )
+    with handler(exception_handler=print, cleanup_callback=connection.close):
+        while True:
+            received, address = protocol.receive(connection=connection, address=address)
 
-        except (
-                ConnectionError,
-                ConnectionRefusedError,
-                ConnectionAbortedError,
-                ConnectionResetError
-        ) as e:
-            print(f"{type(e).__name__}: {str(e)}")
+            if not received:
+                continue
+            # end if
 
-            break
-        # end try
+            print("server:", (received, address))
 
-        if not received:
-            continue
-        # end if
+            sent = f"server received from {address}: ".encode() + received
 
-        sent = f"server received from {address}: ".encode() + received
-
-        protocol.send(connection=connection, data=sent, address=address)
-    # end while
-# end respond
+            protocol.send(connection=connection, data=sent, address=address)
+        # end while
+    # end handler
+# end action
 
 HOST = "127.0.0.1"
 PROTOCOL = 'TCP'
@@ -70,7 +55,7 @@ def main() -> None:
 
     server = Server(protocol)
     server.bind((HOST, PORT))
-    server.serve(action=respond, block=False, sequential=True)
+    server.serve(action=action)
 # end main
 
 if __name__ == '__main__':

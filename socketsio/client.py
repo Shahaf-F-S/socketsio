@@ -76,7 +76,7 @@ class Client(Socket):
             data: bytes,
             connection: Optional[Connection] = None,
             address: Optional[Address] = None
-    ) -> None:
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Sends a message to the client or server by its connection.
 
@@ -85,13 +85,15 @@ class Client(Socket):
         :param address: The address of the sender.
         """
 
-        self.protocol.send(
+        return self.protocol.send(
             connection=connection or self.connection,
             data=data, address=address or self._address
         )
     # end send
 
-    def receive(self, connection: Optional[Connection] = None) -> bytes:
+    def receive(
+            self, connection: Optional[Connection] = None
+    ) -> Tuple[bytes, Optional[Address]]:
         """
         Receive a message from the client or server by its connection.
 
@@ -101,7 +103,8 @@ class Client(Socket):
         """
 
         return self.protocol.receive(
-            connection=connection or self.connection
+            connection=connection or self.connection,
+            address=self._address
         )
     # end receive
 # end Client

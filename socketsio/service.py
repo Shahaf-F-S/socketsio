@@ -42,7 +42,7 @@ class Service(ServiceInterface):
             self,
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None,
-            clients: Optional[Clients] = None,
+            sequential: Optional[bool] = True,
             remove: Optional[bool] = True,
             update: Optional[bool] = False,
             block: Optional[bool] = False,
@@ -55,19 +55,19 @@ class Service(ServiceInterface):
 
         :param action: The action to call.
         :param protocol: The protocol to use for sockets communication.
-        :param clients: The client's collection.
         :param remove: The value to remove clients after each response.
         :param update: The value to update the service.
         :param block: The value to block the execution and wain for the service.
         :param refresh: The value to refresh the service.
         :param wait: The waiting time.
         :param timeout: The start_timeout for the process.
+        :param sequential: The value to sequentially find clients.
         """
 
         threading.Thread(
             target=lambda: self.server.serve(
                 block=True, protocol=protocol, action=action,
-                clients=clients, remove=remove
+                sequential=sequential
             )
         ).start()
 

@@ -7,58 +7,16 @@ from typing import (
 )
 import threading
 
-from socketsio.protocols import (
-    BaseProtocol, is_udp, UDP, BufferedProtocol, BCP
-)
+from socketsio.protocols import BaseProtocol
 from socketsio.sockets import Socket
 
 __all__ = [
-    "Server",
-    "server_receive_from_client"
+    "Server"
 ]
 
 Connection = socket.socket
 Address = Tuple[str, int]
-Action = Callable[[Connection, Address, BaseProtocol], Any]
-
-def server_receive_from_client(
-        connection: Connection,
-        protocol: BaseProtocol,
-        address: Optional[Address] = None,
-        buffer: Optional[int] = None
-) -> Tuple[bytes, Address]:
-    """
-    Receives the message and address from the client and returns the data.
-
-    :param connection: The socket connection object.
-    :param protocol: The protocol object.
-    :param address: The address to use.
-    :param buffer: The buffer size to collect.
-
-    :return: The received data and address.
-    """
-
-    if isinstance(protocol, (BufferedProtocol, BCP)):
-        buffer = buffer or protocol.size
-    # end if
-
-    if is_udp(connection):
-        if isinstance(protocol, UDP):
-            received, address = connection.recvfrom(buffer)
-
-        else:
-            raise ValueError(
-                f"Unable to handle UDP socket "
-                f"and non-UDP protocol: {protocol}"
-            )
-        # end if
-
-    else:
-        received = protocol.receive(connection=connection)
-    # end if
-
-    return received, address
-# end server_receive_from_client
+Action = Callable[[Connection, Optional[Address], Optional[BaseProtocol]], Any]
 
 class Server(Socket):
     """A class to represent the server object."""
@@ -265,7 +223,7 @@ class Server(Socket):
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None,
             block: Optional[bool] = True,
-            sequential: Optional[bool] = False
+            sequential: Optional[bool] = True
     ) -> None:
         """
         Runs the threads to serving_loop to clients with requests.
