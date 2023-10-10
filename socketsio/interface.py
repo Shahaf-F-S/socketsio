@@ -299,9 +299,7 @@ class ServiceInterface:
         # end if
     # end run
 
-    def start_timeout(
-        self, duration: Union[float, dt.timedelta, dt.datetime]
-    ) -> None:
+    def start_timeout(self, duration: Union[float, dt.timedelta, dt.datetime]) -> None:
         """
         Runs a timeout for the process.
 
