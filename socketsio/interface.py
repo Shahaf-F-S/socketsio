@@ -249,7 +249,7 @@ class ServiceInterface:
             duration = dt.datetime.now() + duration
         # end if
 
-        while self.timeout and (duration < dt.datetime.now()):
+        while self.timeout and (duration > dt.datetime.now()):
             time.sleep(self.DELAY)
         # end while
 
