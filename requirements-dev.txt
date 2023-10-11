@@ -1,6 +1,6 @@
 twine
 pytest
-pdic3
+pdoc3
 
 pyrepresent
 looperator
