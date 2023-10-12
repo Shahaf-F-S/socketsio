@@ -1,7 +1,6 @@
 # server.py
 
 import socket
-import time
 from typing import (
     Optional, Tuple, Any, Callable
 )
@@ -26,21 +25,27 @@ class Server(Socket):
     def __init__(
             self,
             protocol: BaseProtocol,
-            connection: Optional[Connection] = None
+            connection: Optional[Connection] = None,
+            sequential: Optional[bool] = False
     ) -> None:
         """
         Defines the attributes of a server.
 
         :param connection: The socket object of the server.
         :param protocol: The communication protocol object.
+        :param sequential: The value to sequentially find clients.
         """
+
+        if sequential is None:
+            sequential = False
+        # end if
 
         super().__init__(connection=connection, protocol=protocol)
 
         self._listening = False
         self._bound = False
 
-        self.handling = False
+        self.sequential = sequential
 
         self._address: Optional[Address] = None
     # end __init__
@@ -103,7 +108,7 @@ class Server(Socket):
     def validate_listening(self) -> None:
         """Validates the binding of the socket."""
 
-        if not self.is_udp() and (not self.listening):
+        if not self.listening and not self.is_udp():
             self.listen()
         # end if
     # end validate_binding
@@ -142,7 +147,7 @@ class Server(Socket):
         return connection, address, protocol
     # end action_parameters
 
-    def handle(
+    def _handle(
             self,
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None
@@ -155,7 +160,7 @@ class Server(Socket):
         """
 
         action(*self.action_parameters(protocol=protocol))
-    # end handle
+    # end _handle
 
     def action(
             self,
@@ -182,81 +187,41 @@ class Server(Socket):
         self._listening = True
     # end listen
 
-    def _serve(
+    def handle(
             self,
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None,
             sequential: Optional[bool] = False
     ) -> None:
         """
-        Runs the threads to serving_loop to clients with requests.
+        Sends a message to the client by its connection.
 
-        :param action: The action to call.
         :param protocol: The protocol to use for sockets communication.
+        :param action: The action to call.
         :param sequential: The value to sequentially find clients.
         """
 
         self.validate_listening()
 
-        self.handling = True
+        if sequential is not None:
+            self.sequential = sequential
+        # end if
 
-        while self.handling:
-            if sequential:
-                parameters = self.action_parameters(protocol=protocol)
+        sequential = self.sequential
 
-                threading.Thread(
-                    target=lambda: action(*parameters)
-                ).start()
+        if sequential:
+            parameters = self.action_parameters(protocol=protocol)
 
-            else:
-                threading.Thread(
-                    target=lambda: self.handle(
-                        protocol=protocol, action=action
-                    )
-                ).start()
-            # end if
-        # end while
-    # end _serve
-
-    def serve(
-            self,
-            protocol: Optional[BaseProtocol] = None,
-            action: Optional[Action] = None,
-            block: Optional[bool] = True,
-            sequential: Optional[bool] = True
-    ) -> None:
-        """
-        Runs the threads to serving_loop to clients with requests.
-
-        :param action: The action to call.
-        :param protocol: The protocol to use for sockets communication.
-        :param block: The value to block the process.
-        :param sequential: The value to sequentially find clients.
-        """
-
-        if block:
-            self._serve(
-                protocol=protocol, action=action,
-                sequential=sequential
-            )
+            threading.Thread(
+                target=lambda: action(*parameters)
+            ).start()
 
         else:
             threading.Thread(
-                target=lambda: self._serve(
-                    protocol=protocol, action=action,
-                    sequential=sequential
+                target=lambda: self._handle(
+                    protocol=protocol, action=action
                 )
             ).start()
-
-            self.await_handling()
         # end if
-    # end serve
-
-    def await_handling(self) -> None:
-        """Awaits the start of the handling process."""
-
-        while not self.handling:
-            time.sleep(self.DELAY)
-        # end while
-    # end await_handling
+    # end handle
 # end Server

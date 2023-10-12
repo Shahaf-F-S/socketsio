@@ -3,3 +3,4 @@ pytest
 pdic3
 
 pyrepresent
+looperator

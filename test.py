@@ -4,8 +4,10 @@ import socket
 from typing import Tuple
 
 from socketsio import (
-    Client, Server, BaseProtocol, BCP, TCP, UDP, handler
+    Client, Server, BaseProtocol, BCP, TCP, UDP
 )
+
+from looperator import Handler, Operator
 
 Connection = socket.socket
 Address = Tuple[str, int]
@@ -19,7 +21,7 @@ def action(connection: Connection, address: Address, protocol: BaseProtocol) -> 
     :param address: The address of the connection.
     """
 
-    with handler(exception_handler=print, cleanup_callback=connection.close):
+    with Handler(exception_handler=print, cleanup_callback=connection.close):
         while True:
             received, address = protocol.receive(connection=connection, address=address)
 
@@ -55,7 +57,9 @@ def main() -> None:
 
     server = Server(protocol)
     server.bind((HOST, PORT))
-    server.serve(action=action, block=False)
+
+    service = Operator(operation=lambda: server.handle(action=action))
+    service.run()
 
     client = Client(protocol)
     client.connect((HOST, PORT))

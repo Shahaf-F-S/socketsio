@@ -425,7 +425,7 @@ def is_tcp(connection: Connection) -> bool:
     """
 
     return connection.type == socket.SOCK_STREAM
-    # end is_tcp
+# end is_tcp
 
 def is_udp(connection: Connection) -> bool:
     """
@@ -437,7 +437,7 @@ def is_udp(connection: Connection) -> bool:
     """
 
     return connection.type == socket.SOCK_DGRAM
-    # end is_udp
+# end is_udp
 
 def is_tcp_bluetooth(connection: Connection) -> bool:
     """
