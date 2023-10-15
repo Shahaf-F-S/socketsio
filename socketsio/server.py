@@ -126,8 +126,7 @@ class Server(Socket):
     # end accept
 
     def action_parameters(
-            self,
-            protocol: Optional[BaseProtocol] = None
+            self, protocol: Optional[BaseProtocol] = None
     ) -> Tuple[Connection, Address, BaseProtocol]:
         """
         Returns the parameters to call the action function.
@@ -191,7 +190,7 @@ class Server(Socket):
             self,
             protocol: Optional[BaseProtocol] = None,
             action: Optional[Action] = None,
-            sequential: Optional[bool] = False
+            sequential: Optional[bool] = None
     ) -> None:
         """
         Sends a message to the client by its connection.
