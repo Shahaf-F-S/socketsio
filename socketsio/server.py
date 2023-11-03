@@ -97,8 +97,18 @@ class Server(Socket):
         self._bound = True
     # end bind
 
+    def validate_connection(self) -> None:
+        """Validates a connection."""
+
+        if self.connection is None:
+            self.connection = self.protocol.socket()
+        # end if
+    # end validate_connection
+
     def validate_binding(self) -> None:
         """Validates the binding of the socket."""
+
+        self.validate_connection()
 
         if not self.bound:
             if self._address:
@@ -170,6 +180,8 @@ class Server(Socket):
         """Closes the connection."""
 
         self.connection.close()
+
+        self.connection = None
 
         self._listening = False
         self._bound = False

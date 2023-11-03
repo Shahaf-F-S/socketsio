@@ -134,6 +134,8 @@ class Client(Socket):
 
         self.connection.close()
 
+        self.connection = None
+
         self._connected = False
     # end close
 # end Client
