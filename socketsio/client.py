@@ -64,12 +64,29 @@ class Client(Socket):
         :param address: The address of the server to connect to.
         """
 
+        if self.connection is None:
+            self.connection = self.protocol.socket()
+        # end if
+
         self.connection.connect(address)
 
         self._address = address
 
         self._connected = Tuple
-    # end accept
+    # end connect
+
+    def validate_connection(self) -> None:
+        """Validates a connection."""
+
+        if not self._connected:
+            if self._address:
+                self.connect(self._address)
+
+            else:
+                raise ValueError("Socket is not connected.")
+            # end if
+        # end if
+    # end validate_connection
 
     def send(
             self,
@@ -84,6 +101,8 @@ class Client(Socket):
         :param data: The message to send to the client.
         :param address: The address of the sender.
         """
+
+        self.validate_connection()
 
         return self.protocol.send(
             connection=connection or self.connection,
@@ -102,9 +121,19 @@ class Client(Socket):
         :return: The received message from the server.
         """
 
+        self.validate_connection()
+
         return self.protocol.receive(
             connection=connection or self.connection,
             address=self._address
         )
     # end receive
+
+    def close(self) -> None:
+        """Closes the connection."""
+
+        self.connection.close()
+
+        self._connected = False
+    # end close
 # end Client

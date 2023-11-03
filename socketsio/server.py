@@ -101,7 +101,12 @@ class Server(Socket):
         """Validates the binding of the socket."""
 
         if not self.bound:
-            raise ValueError("Cannot start listening before binding.")
+            if self._address:
+                self.bind(self._address)
+
+            else:
+                raise ValueError("Cannot start listening before binding.")
+            # end if
         # end if
     # end validate_binding
 
@@ -125,7 +130,7 @@ class Server(Socket):
         return self.connection.accept()
     # end accept
 
-    def action_parameters(
+    def _action_parameters(
             self, protocol: Optional[BaseProtocol] = None
     ) -> Tuple[Connection, Address, BaseProtocol]:
         """
@@ -144,7 +149,7 @@ class Server(Socket):
         # end if
 
         return connection, address, protocol
-    # end action_parameters
+    # end _action_parameters
 
     def _handle(
             self,
@@ -158,8 +163,17 @@ class Server(Socket):
         :param action: The action to call.
         """
 
-        action(*self.action_parameters(protocol=protocol))
+        action(*self._action_parameters(protocol=protocol))
     # end _handle
+
+    def close(self) -> None:
+        """Closes the connection."""
+
+        self.connection.close()
+
+        self._listening = False
+        self._bound = False
+    # end close
 
     def action(
             self,
@@ -209,7 +223,7 @@ class Server(Socket):
         sequential = self.sequential
 
         if sequential:
-            parameters = self.action_parameters(protocol=protocol)
+            parameters = self._action_parameters(protocol=protocol)
 
             threading.Thread(
                 target=lambda: action(*parameters)
