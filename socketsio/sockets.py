@@ -70,6 +70,14 @@ class Socket:
         return is_tcp_bluetooth(self.connection)
     # end is_tcp_bluetooth
 
+    def validate_connection(self) -> None:
+        """Validates a connection."""
+
+        if self.connection is None:
+            self.connection = self.protocol.socket()
+        # end if
+    # end validate_connection
+
     def send(
             self,
             data: bytes,

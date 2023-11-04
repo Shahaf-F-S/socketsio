@@ -47,6 +47,17 @@ class Client(Socket):
     # end connected
 
     @property
+    def preconnected(self) -> bool:
+        """
+        Returns the value of a bounded connection.
+
+        :return: The boolean flag.
+        """
+
+        return self._address is not None
+    # end preconnected
+
+    @property
     def address(self) -> Address:
         """
         Returns the ip and port of the binding.
@@ -64,23 +75,37 @@ class Client(Socket):
         :param address: The address of the server to connect to.
         """
 
-        if self.connection is None:
-            self.connection = self.protocol.socket()
-        # end if
+        self.validate_connection()
 
         self.connection.connect(address)
 
         self._address = address
 
-        self._connected = Tuple
+        self._connected = True
     # end connect
 
-    def validate_connection(self) -> None:
+    def preconnect(self, address: Address) -> None:
+        """
+        Returns the connection and address from the accepted client.
+
+        :param address: The address of the server to connect to.
+        """
+
+        self._address = address
+    # end connect
+
+    def reconnect(self) -> None:
+        """Returns the connection and address from the accepted client."""
+
+        self.connect(self._address)
+    # end connect
+
+    def validate_connected(self) -> None:
         """Validates a connection."""
 
-        if not self._connected:
-            if self._address:
-                self.connect(self._address)
+        if not self.connected:
+            if self.preconnected:
+                self.reconnect()
 
             else:
                 raise ValueError("Socket is not connected.")

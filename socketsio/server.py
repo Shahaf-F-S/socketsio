@@ -73,6 +73,17 @@ class Server(Socket):
     # end bound
 
     @property
+    def prebound(self) -> bool:
+        """
+        Returns the value of a bounded connection.
+
+        :return: The boolean flag.
+        """
+
+        return self._address is not None
+    # end prebound
+
+    @property
     def address(self) -> Address:
         """
         Returns the ip and port of the binding.
@@ -90,6 +101,8 @@ class Server(Socket):
         :param address: The address to bind to.
         """
 
+        self.validate_connection()
+
         self.connection.bind(address)
 
         self._address = address
@@ -97,13 +110,21 @@ class Server(Socket):
         self._bound = True
     # end bind
 
-    def validate_connection(self) -> None:
-        """Validates a connection."""
+    def prebind(self, address: Address) -> None:
+        """
+        Binds the connection of the server.
 
-        if self.connection is None:
-            self.connection = self.protocol.socket()
-        # end if
-    # end validate_connection
+        :param address: The address to bind to.
+        """
+
+        self._address = address
+    # end bind
+
+    def rebind(self) -> None:
+        """Binds the connection of the server."""
+
+        self.bind(self._address)
+    # end bind
 
     def validate_binding(self) -> None:
         """Validates the binding of the socket."""
@@ -111,8 +132,8 @@ class Server(Socket):
         self.validate_connection()
 
         if not self.bound:
-            if self._address:
-                self.bind(self._address)
+            if self.prebound:
+                self.rebind()
 
             else:
                 raise ValueError("Cannot start listening before binding.")
