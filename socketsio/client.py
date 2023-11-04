@@ -103,6 +103,8 @@ class Client(Socket):
     def validate_connected(self) -> None:
         """Validates a connection."""
 
+        self.validate_connection()
+
         if not self.connected:
             if self.preconnected:
                 self.reconnect()
@@ -127,7 +129,7 @@ class Client(Socket):
         :param address: The address of the sender.
         """
 
-        self.validate_connection()
+        self.validate_connected()
 
         return self.protocol.send(
             connection=connection or self.connection,
@@ -146,7 +148,7 @@ class Client(Socket):
         :return: The received message from the server.
         """
 
-        self.validate_connection()
+        self.validate_connected()
 
         return self.protocol.receive(
             connection=connection or self.connection,
