@@ -3,7 +3,7 @@
 import io
 import os
 import tokenize
-from typing import List, Optional, Iterable, Dict, Any
+from typing import Iterable, Any
 from pathlib import Path
 import json
 
@@ -106,12 +106,13 @@ def strip_code_file(path: str) -> str:
     return strip_code(read_file(path))
 # end strip_code_file
 
-FilesCollection = Dict[str, List[str]]
+FilesCollection = dict[str, list[str]]
 
 def collect_files(
-        location: str, extensions: Optional[Iterable[str]] = None,
-        excluded_names: Optional[Iterable[str]] = None,
-        levels: Optional[int] = None
+        location: str,
+        extensions: Iterable[str] = None,
+        excluded_names: Iterable[str] = None,
+        levels: int = None
 ) -> FilesCollection:
     """
     Collects all the file paths from the location with the extension.
@@ -280,7 +281,7 @@ class ProjectSpecs:
 class ProjectTree:
     """A class to represent the project tree."""
 
-    def __init__(self, tree: Dict[str, Any]) -> None:
+    def __init__(self, tree: dict[str, Any]) -> None:
         """
         Defines the class attributes.
 
@@ -292,7 +293,7 @@ class ProjectTree:
 # end ProjectTree
 
 def set_project_leaf(
-        tree: Dict[str, Any], branches: List[str], leaf: Dict[str, Any]
+        tree: dict[str, Any], branches: list[str], leaf: dict[str, Any]
 ) -> None:
     """
     Set a terminal element to a leaf within nested dictionaries.
@@ -319,8 +320,9 @@ def set_project_leaf(
 # end set_leaf
 
 def project_tree(
-        location: str, excluded_extensions: Optional[Iterable[str]] = None,
-        excluded_names: Optional[Iterable[str]] = None
+        location: str,
+        excluded_extensions: Iterable[str] = None,
+        excluded_names: Iterable[str] = None
 ) -> ProjectTree:
     """
     Gets the project file structure tree.
@@ -468,10 +470,11 @@ class ProjectInspection:
 # end ProjectInspection
 
 def inspect_project(
-        location: str, content_file_extensions: Optional[Iterable[str]] = None,
-        code_file_extensions: Optional[Iterable[str]] = None,
-        excluded_extensions: Optional[Iterable[str]] = None,
-        excluded_names: Optional[Iterable[str]] = None
+        location: str,
+        content_file_extensions: Iterable[str] = None,
+        code_file_extensions: Iterable[str] = None,
+        excluded_extensions: Iterable[str] = None,
+        excluded_names: Iterable[str] = None
 ) -> ProjectInspection:
     """
     Defines the class attributes.
@@ -509,7 +512,7 @@ class ModelEncoder(json.JSONEncoder):
 
     excluded: Iterable[str] = []
 
-    def default(self, obj: Any) -> Dict[str, Any]:
+    def default(self, obj: Any) -> dict[str, Any]:
         """
         Returns the data to encode to json format.
 
@@ -531,11 +534,11 @@ class ModelEncoder(json.JSONEncoder):
 # end ModelEncoder
 
 def project_specs(
-        location: str, save: Optional[bool] = True,
-        excluded_extensions: Optional[Iterable[str]] = None,
-        excluded_names: Optional[Iterable[str]] = None,
-        content_file_extensions: Optional[Iterable[str]] = None,
-        code_file_extensions: Optional[Iterable[str]] = None
+        location: str, save: bool = True,
+        excluded_extensions: Iterable[str] = None,
+        excluded_names: Iterable[str] = None,
+        content_file_extensions: Iterable[str] = None,
+        code_file_extensions: Iterable[str] = None
 ) -> ProjectInspection:
     """
     Gets the project file structure tree.

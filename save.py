@@ -1,13 +1,12 @@
 # save.py
 
 import os
-from typing import Optional
 
 from base import run_silent_command, suppress
 from specs import project_specs
 from document import generate_html
 
-def main(project: str, silence: Optional[bool] = True) -> None:
+def main(project: str, silence: bool = True) -> None:
     """
     Runs the function to save thew project.
 

@@ -11,7 +11,7 @@ import ctypes
 import os
 from pathlib import Path
 import threading
-from typing import Any, Optional, Dict
+from typing import Any
 
 __all__ = [
     "terminate_thread",
@@ -106,7 +106,7 @@ def terminate_thread(thread: threading.Thread) -> None:
     logging.getLogger().setLevel(logging.FATAL)
 # end terminate_thread
 
-def suppress(silence: Optional[bool] = True) -> contextlib.AbstractContextManager:
+def suppress(silence: bool = True) -> contextlib.AbstractContextManager:
     """
     Suppresses the output.
 
@@ -164,10 +164,10 @@ def activate_virtualenv_command() -> str:
 
 def validate_requirement(
         name: str,
-        path: Optional[str] = None,
-        version: Optional[str] = None,
-        quiet: Optional[bool] = True,
-        silence: Optional[bool] = False
+        path: str = None,
+        version: str = None,
+        quiet: bool = True,
+        silence: bool = False
 ) -> None:
     """
     Installs the required package.
@@ -226,7 +226,7 @@ def validate_requirement(
     # end try
 # end validate_requirements
 
-def retrieve_name(variable: Any, level: Optional[int] = 1) -> str:
+def retrieve_name(variable: Any, level: int = 1) -> str:
     """
     Gets the name of the source variable of the parameter.
 
@@ -249,7 +249,7 @@ def retrieve_name(variable: Any, level: Optional[int] = 1) -> str:
     ][0]
 # end retrieve_name
 
-def documentation(module: str) -> Dict[str, str]:
+def documentation(module: str) -> dict[str, str]:
     """
     Documents a module with its content objects documentation.
 
