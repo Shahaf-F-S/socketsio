@@ -2,15 +2,14 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from base import validate_requirement
 
 def generate_html(
         package: str,
-        destination: Optional[str] = None,
-        reload: Optional[bool] = False,
-        show: Optional[bool] = False
+        destination: str = None,
+        reload: bool = False,
+        show: bool = False
 ) -> None:
     """
     Generates the documentation for the package.
