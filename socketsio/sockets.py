@@ -1,7 +1,6 @@
 # sockets.py
 
 import socket
-from typing import Optional, Tuple
 
 from socketsio.protocols import (
     BaseProtocol, udp_socket, tcp_socket, is_udp,
@@ -18,7 +17,7 @@ __all__ = [
 ]
 
 Connection = socket.socket
-Address = Tuple[str, int]
+Address = tuple[str, int]
 
 @represent
 class Socket:
@@ -27,7 +26,7 @@ class Socket:
     def __init__(
             self,
             protocol: BaseProtocol,
-            connection: Optional[Connection] = None
+            connection: Connection = None
     ) -> None:
         """
         Defines the attributes of a server.
@@ -81,9 +80,9 @@ class Socket:
     def send(
             self,
             data: bytes,
-            connection: Optional[Connection] = None,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            connection: Connection = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Sends a message to the client or server by its connection.
 
@@ -98,9 +97,7 @@ class Socket:
         )
     # end send
 
-    def receive(
-            self, connection: Optional[Connection] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+    def receive(self, connection: Connection = None) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 

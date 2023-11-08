@@ -1,9 +1,7 @@
 # server.py
 
 import socket
-from typing import (
-    Optional, Tuple, Any, Callable
-)
+from typing import Any, Callable
 import threading
 
 from socketsio.protocols import BaseProtocol
@@ -14,8 +12,8 @@ __all__ = [
 ]
 
 Connection = socket.socket
-Address = Tuple[str, int]
-Action = Callable[[Connection, Optional[Address], Optional[BaseProtocol]], Any]
+Address = tuple[str, int]
+Action = Callable[[Connection, Address | None, BaseProtocol | None], Any]
 
 class Server(Socket):
     """A class to represent the server object."""
@@ -25,8 +23,8 @@ class Server(Socket):
     def __init__(
             self,
             protocol: BaseProtocol,
-            connection: Optional[Connection] = None,
-            sequential: Optional[bool] = False
+            connection: Connection = None,
+            sequential: bool = False
     ) -> None:
         """
         Defines the attributes of a server.
@@ -47,7 +45,7 @@ class Server(Socket):
 
         self.sequential = sequential
 
-        self._address: Optional[Address] = None
+        self._address: Address | None = None
     # end __init__
 
     @property
@@ -149,7 +147,7 @@ class Server(Socket):
         # end if
     # end validate_binding
 
-    def accept(self) -> Tuple[socket.socket, Address]:
+    def accept(self) -> tuple[socket.socket, Address]:
         """
         Returns the connection and address from the accepted client.
 
@@ -162,8 +160,8 @@ class Server(Socket):
     # end accept
 
     def _action_parameters(
-            self, protocol: Optional[BaseProtocol] = None
-    ) -> Tuple[Connection, Address, BaseProtocol]:
+            self, protocol: BaseProtocol = None
+    ) -> tuple[Connection, Address, BaseProtocol]:
         """
         Returns the parameters to call the action function.
 
@@ -184,8 +182,8 @@ class Server(Socket):
 
     def _handle(
             self,
-            protocol: Optional[BaseProtocol] = None,
-            action: Optional[Action] = None
+            protocol: BaseProtocol = None,
+            action: Action = None
     ) -> None:
         """
         Sends a message to the client by its connection.
@@ -235,9 +233,9 @@ class Server(Socket):
 
     def handle(
             self,
-            protocol: Optional[BaseProtocol] = None,
-            action: Optional[Action] = None,
-            sequential: Optional[bool] = None
+            protocol: BaseProtocol = None,
+            action: Action = None,
+            sequential: bool = None
     ) -> None:
         """
         Sends a message to the client by its connection.

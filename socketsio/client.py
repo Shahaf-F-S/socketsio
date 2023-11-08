@@ -1,7 +1,6 @@
 # client.py
 
 import socket
-from typing import Optional, Tuple
 
 from socketsio.protocols import BaseProtocol
 from socketsio.sockets import Socket
@@ -11,7 +10,7 @@ __all__ = [
 ]
 
 Connection = socket.socket
-Address = Tuple[str, int]
+Address = tuple[str, int]
 
 class Client(Socket):
     """A class to represent the server object."""
@@ -19,7 +18,7 @@ class Client(Socket):
     def __init__(
             self,
             protocol: BaseProtocol,
-            connection: Optional[Connection] = None,
+            connection: Connection = None
     ) -> None:
         """
         Defines the attributes of a server.
@@ -30,7 +29,7 @@ class Client(Socket):
 
         super().__init__(connection=connection, protocol=protocol)
 
-        self._address: Optional[Address] = None
+        self._address: Address | None = None
 
         self._connected = False
     # end __init__
@@ -118,9 +117,9 @@ class Client(Socket):
     def send(
             self,
             data: bytes,
-            connection: Optional[Connection] = None,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            connection: Connection = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Sends a message to the client or server by its connection.
 
@@ -138,8 +137,8 @@ class Client(Socket):
     # end send
 
     def receive(
-            self, connection: Optional[Connection] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            self, connection: Connection = None
+    ) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 

@@ -1,13 +1,12 @@
 # protocols.py
 
 import socket
-from typing import Optional, Tuple, List
 from abc import ABCMeta, abstractmethod
 
 from represent import represent
 
 Connection = socket.socket
-Address = Tuple[str, int]
+Address = tuple[str, int]
 
 __all__ = [
     "BufferedProtocol",
@@ -75,8 +74,8 @@ class BaseProtocol(metaclass=ABCMeta):
             self,
             connection: Connection,
             data: bytes,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Sends a message to the client or server by its connection.
 
@@ -90,9 +89,9 @@ class BaseProtocol(metaclass=ABCMeta):
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            buffer: int = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 
@@ -110,7 +109,7 @@ class BufferedProtocol(BaseProtocol, metaclass=ABCMeta):
 
     SIZE = 1024
 
-    def __init__(self, size: Optional[int] = None) -> None:
+    def __init__(self, size: int = None) -> None:
         """
         Defines the attributes of the protocol.
 
@@ -143,8 +142,8 @@ class TCP(BufferedProtocol):
             self,
             connection: Connection,
             data: bytes,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Sends a message to the client or server by its connection.
 
@@ -161,9 +160,9 @@ class TCP(BufferedProtocol):
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            buffer: int = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 
@@ -196,8 +195,8 @@ class UDP(BufferedProtocol):
             self,
             connection: Connection,
             data: bytes,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Sends a message to the client or server by its connection.
 
@@ -218,9 +217,9 @@ class UDP(BufferedProtocol):
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            buffer: int = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 
@@ -240,7 +239,7 @@ class BCP(BaseProtocol):
 
     HEADER = 32
 
-    def __init__(self, protocol: TCP, size: Optional[int] = None) -> None:
+    def __init__(self, protocol: TCP, size: int = None) -> None:
         """
         Defines the base protocol.
 
@@ -300,8 +299,8 @@ class BCP(BaseProtocol):
             self,
             connection: Connection,
             data: bytes,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Sends a message to the client or server by its connection.
 
@@ -357,10 +356,10 @@ class BCP(BaseProtocol):
     def receive(
             self,
             connection: Connection,
-            buffer: Optional[int] = None,
-            length: Optional[int] = None,
-            address: Optional[Address] = None
-    ) -> Tuple[bytes, Optional[Address]]:
+            buffer: int = None,
+            length: int = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 
@@ -393,7 +392,7 @@ class BCP(BaseProtocol):
             )
         # end if
 
-        data: List[bytes] = []
+        data: list[bytes] = []
 
         for _ in range(length // size):
             payload, address = self.protocol.receive(
