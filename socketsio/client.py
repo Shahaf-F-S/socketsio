@@ -18,7 +18,8 @@ class Client(Socket):
     def __init__(
             self,
             protocol: BaseProtocol,
-            connection: Connection = None
+            connection: Connection = None,
+            address: Address = None
     ) -> None:
         """
         Defines the attributes of a server.
@@ -27,9 +28,11 @@ class Client(Socket):
         :param protocol: The communication protocol object.
         """
 
-        super().__init__(connection=connection, protocol=protocol)
-
-        self._address: Address | None = None
+        super().__init__(
+            connection=connection,
+            protocol=protocol,
+            address=address
+        )
 
         self._connected = False
     # end __init__
@@ -55,17 +58,6 @@ class Client(Socket):
 
         return self._address is not None
     # end preconnected
-
-    @property
-    def address(self) -> Address:
-        """
-        Returns the ip and port of the binding.
-
-        :return: The address tuple.
-        """
-
-        return self._address
-    # end address
 
     def connect(self, address: Address) -> None:
         """
@@ -137,12 +129,15 @@ class Client(Socket):
     # end send
 
     def receive(
-            self, connection: Connection = None
+            self,
+            connection: Connection = None,
+            address: Address = None
     ) -> tuple[bytes, Address | None]:
         """
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
+        :param address: The address of the sender.
 
         :return: The received message from the server.
         """
@@ -151,7 +146,7 @@ class Client(Socket):
 
         return self.protocol.receive(
             connection=connection or self.connection,
-            address=self._address
+            address=address or self._address
         )
     # end receive
 

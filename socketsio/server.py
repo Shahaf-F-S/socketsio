@@ -13,7 +13,7 @@ __all__ = [
 
 Connection = socket.socket
 Address = tuple[str, int]
-Action = Callable[[Connection, Address | None, BaseProtocol | None], Any]
+Action = Callable[[Socket], Any]
 
 class Server(Socket):
     """A class to represent the server object."""
@@ -24,7 +24,7 @@ class Server(Socket):
             self,
             protocol: BaseProtocol,
             connection: Connection = None,
-            sequential: bool = False
+            sequential: bool = True
     ) -> None:
         """
         Defines the attributes of a server.
@@ -44,8 +44,6 @@ class Server(Socket):
         self._bound = False
 
         self.sequential = sequential
-
-        self._address: Address | None = None
     # end __init__
 
     @property
@@ -80,17 +78,6 @@ class Server(Socket):
 
         return self._address is not None
     # end prebound
-
-    @property
-    def address(self) -> Address:
-        """
-        Returns the ip and port of the binding.
-
-        :return: The address tuple.
-        """
-
-        return self._address
-    # end address
 
     def bind(self, address: Address) -> None:
         """
@@ -159,9 +146,7 @@ class Server(Socket):
         return self.connection.accept()
     # end accept
 
-    def _action_parameters(
-            self, protocol: BaseProtocol = None
-    ) -> tuple[Connection, Address, BaseProtocol]:
+    def _action_parameters(self, protocol: BaseProtocol = None) -> Socket:
         """
         Returns the parameters to call the action function.
 
@@ -177,7 +162,11 @@ class Server(Socket):
             connection, address = self.accept()
         # end if
 
-        return connection, address, protocol
+        return Socket(
+            connection=connection,
+            protocol=protocol,
+            address=address
+        )
     # end _action_parameters
 
     def _handle(
@@ -192,7 +181,7 @@ class Server(Socket):
         :param action: The action to call.
         """
 
-        action(*self._action_parameters(protocol=protocol))
+        action(self._action_parameters(protocol=protocol))
     # end _handle
 
     def close(self) -> None:
@@ -206,18 +195,11 @@ class Server(Socket):
         self._bound = False
     # end close
 
-    def action(
-            self,
-            connection: Connection,
-            address: Address,
-            protocol: BaseProtocol
-    ) -> None:
+    def action(self, client: Socket) -> None:
         """
         Sets or updates clients data in the clients' container .
 
-        :param protocol: The protocol to use for sockets communication.
-        :param connection: The socket object of the server.
-        :param address: The address of the connection.
+        :param client: The client socket object.
         """
     # end action
 
@@ -257,7 +239,7 @@ class Server(Socket):
             parameters = self._action_parameters(protocol=protocol)
 
             threading.Thread(
-                target=lambda: action(*parameters)
+                target=lambda: action(parameters)
             ).start()
 
         else:

@@ -96,7 +96,7 @@ class BaseProtocol(metaclass=ABCMeta):
         Receive a message from the client or server by its connection.
 
         :param connection: The sockets' connection object.
-        :param buffer: The buffer size to collect.\
+        :param buffer: The buffer size to collect.
         :param address: The address of the sender.
 
         :return: The received message from the server.

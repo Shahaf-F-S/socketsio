@@ -4,26 +4,27 @@ import socket
 from typing import Tuple
 
 from socketsio import (
-    Server, BaseProtocol, BCP, TCP, UDP
+    Server, Socket, BCP, TCP, UDP
 )
 
-from looperator import Handler
+from looperator import Handler, Operator
 
 Connection = socket.socket
 Address = Tuple[str, int]
 
-def action(connection: Connection, address: Address, protocol: BaseProtocol) -> None:
+def action(client: Socket) -> None:
     """
     Sets or updates clients data in the clients' container .
 
-    :param protocol: The protocol to use for sockets communication.
-    :param connection: The socket object of the server.
-    :param address: The address of the connection.
+    :param client: The client socket object.
     """
 
-    with Handler(exception_handler=print, cleanup_callback=connection.close):
+    with Handler(
+        exception_handler=print,
+        cleanup_callback=client.close if not client.is_udp() else None
+    ):
         while True:
-            received, address = protocol.receive(connection=connection, address=address)
+            received, address = client.receive()
 
             if not received:
                 continue
@@ -31,9 +32,12 @@ def action(connection: Connection, address: Address, protocol: BaseProtocol) -> 
 
             print("server:", (received, address))
 
-            sent = f"server received from {address}: ".encode() + received
+            sent = (
+                f"server received from "
+                f"{address}: ".encode() + received
+            )
 
-            protocol.send(connection=connection, data=sent, address=address)
+            client.send(data=sent)
         # end while
     # end handler
 # end action
@@ -57,7 +61,11 @@ def main() -> None:
 
     server = Server(protocol)
     server.bind((HOST, PORT))
-    server.serve(action=action)
+
+    service = Operator(
+        operation=lambda: server.handle(action=action)
+    )
+    service.run()
 # end main
 
 if __name__ == '__main__':
