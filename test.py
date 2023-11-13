@@ -37,7 +37,7 @@ def action(client: Socket) -> None:
                 f"{address}: ".encode() + received
             )
 
-            client.send(data=sent)
+            client.send(sent)
         # end while
     # end handler
 # end action
