@@ -21,7 +21,7 @@ def action(client: Socket) -> None:
 
     with Handler(
         exception_handler=print,
-        cleanup_callback=client.close if not client.is_udp() else None
+        cleanup_callback=client.close
     ):
         while True:
             received, address = client.receive()

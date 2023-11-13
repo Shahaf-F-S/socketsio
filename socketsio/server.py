@@ -8,12 +8,69 @@ from socketsio.protocols import BaseProtocol
 from socketsio.sockets import Socket
 
 __all__ = [
-    "Server"
+    "Server",
+    "ServerSideClient"
 ]
 
 Connection = socket.socket
 Address = tuple[str, int]
 Action = Callable[[Socket], Any]
+
+class ServerSideClient(Socket):
+    """A socket connection I/O object."""
+
+    def __init__(
+            self,
+            protocol: BaseProtocol,
+            connection: Connection = None,
+            address: Address = None
+    ) -> None:
+        """
+        Defines the attributes of a server.
+
+        :param connection: The socket object of the server.
+        :param protocol: The communication protocol object.
+        :param address: The address of the connection.
+        """
+
+        super().__init__(
+            protocol=protocol, connection=connection, address=address
+        )
+
+        self._connected = self.connection is not None
+    # end __init__
+
+    @property
+    def connected(self) -> bool:
+        """
+        Returns the value of the socket being connected.
+
+        :return: The connected value.
+        """
+
+        return self._connected
+    # end connected
+
+    def close(self) -> None:
+        """Closes the connection."""
+
+        if not self.is_udp():
+            self.connection.close()
+
+            self.connection = None
+        # end
+
+        self._connected = True
+    # end close
+
+    def validate_connection(self) -> None:
+        """Validates a connection."""
+
+        if not self.connection:
+            raise ValueError("The socket is already closed.")
+        # end if
+    # end validate_connection
+# end ServerSideClient
 
 class Server(Socket):
     """A class to represent the server object."""
@@ -146,7 +203,7 @@ class Server(Socket):
         return self.connection.accept()
     # end accept
 
-    def _action_parameters(self, protocol: BaseProtocol = None) -> Socket:
+    def _action_parameters(self, protocol: BaseProtocol = None) -> ServerSideClient:
         """
         Returns the parameters to call the action function.
 
@@ -162,7 +219,7 @@ class Server(Socket):
             connection, address = self.accept()
         # end if
 
-        return Socket(
+        return ServerSideClient(
             connection=connection,
             protocol=protocol,
             address=address
