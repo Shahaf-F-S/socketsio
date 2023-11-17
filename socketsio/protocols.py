@@ -19,7 +19,8 @@ __all__ = [
     "bluetooth_socket",
     "is_udp",
     "is_tcp",
-    "is_tcp_bluetooth"
+    "is_tcp_bluetooth",
+    "BHP"
 ]
 
 def tcp_socket() -> Connection:
@@ -234,7 +235,96 @@ class UDP(BufferedProtocol):
     # end receive
 # end UDP
 
-class BCP(BaseProtocol):
+class BHP(BaseProtocol):
+    """Defines the basic parameters for the communication."""
+
+    HEADER = 32
+
+    def __init__(self, protocol: TCP) -> None:
+        """
+        Defines the base protocol.
+
+        :param protocol: The base protocol object to use.
+        """
+
+        self.protocol = protocol
+    # end __init__
+
+    def socket(self) -> Connection:
+        """
+        Returns a new base socket object.
+
+        :return: The socket object.
+        """
+
+        return self.protocol.socket()
+    # end socket
+
+    def send(
+            self,
+            connection: Connection,
+            data: bytes,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
+        """
+        Sends a message to the client or server by its connection.
+
+        :param data: The message to send to the client.
+        :param connection: The sockets' connection object.
+        :param address: The address of the sender.
+        """
+
+        message_len = len(data)
+
+        length_message = (
+            ("0" * (self.HEADER - len(str(message_len)))) +
+            str(message_len)
+        ).encode()
+
+        return self.protocol.send(
+            connection=connection, data=length_message + data,
+            address=address
+        )
+    # end send
+
+    def receive(
+            self,
+            connection: Connection,
+            buffer: int = None,
+            length: int = None,
+            address: Address = None
+    ) -> tuple[bytes, Address | None]:
+        """
+        Receive a message from the client or server by its connection.
+
+        :param connection: The sockets' connection object.
+        :param buffer: The buffer size to collect.
+        :param length: The length of the message to expect.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+
+        if length is None:
+            message, address = self.protocol.receive(
+                connection=connection, buffer=self.HEADER, address=address
+            )
+            length_message = message.decode()
+
+            if not length_message or (length_message.count("0") == len(length_message)):
+                return b'', address
+            # end if
+
+            length = int(length_message)
+        # end if
+
+        return self.protocol.receive(
+            connection=connection, buffer=length, address=address
+        )
+    # end receive
+# end BCP
+
+class BCP(BHP):
     """Defines the basic parameters for the communication."""
 
     HEADER = 32
@@ -247,7 +337,7 @@ class BCP(BaseProtocol):
         :param size: The buffer size.
         """
 
-        self.protocol = protocol
+        super().__init__(protocol=protocol)
 
         self._size = size
     # end __init__
@@ -285,74 +375,6 @@ class BCP(BaseProtocol):
         self._size = value
     # end size
 
-    def socket(self) -> Connection:
-        """
-        Returns a new base socket object.
-
-        :return: The socket object.
-        """
-
-        return self.protocol.socket()
-    # end socket
-
-    def send(
-            self,
-            connection: Connection,
-            data: bytes,
-            address: Address = None
-    ) -> tuple[bytes, Address | None]:
-        """
-        Sends a message to the client or server by its connection.
-
-        :param data: The message to send to the client.
-        :param connection: The sockets' connection object.
-        :param address: The address of the sender.
-        """
-
-        message_len = len(data)
-
-        size = self.size
-
-        length_message = (
-            str(message_len) +
-            (" " * (self.HEADER - len(str(message_len))))
-        ).encode()
-
-        self.protocol.send(
-            connection=connection, data=length_message,
-            address=address
-        )
-
-        if size >= message_len:
-            return self.protocol.send(
-                connection=connection, data=data,
-                address=address
-            )
-        # end if
-
-        total = 0
-
-        for i in range(0, message_len, size):
-            self.protocol.send(
-                connection=connection, data=data[i:i + size],
-                address=address
-            )
-
-            total += len(data[i:i + size])
-
-            if total == message_len:
-                return data, address
-            # end if
-        # end for
-
-        if message_len % size:
-            self.protocol.send(
-                connection=connection, data=data[-(message_len % size):],
-                address=address
-            )
-        # end if
-    # end send
-
     def receive(
             self,
             connection: Connection,
@@ -381,7 +403,7 @@ class BCP(BaseProtocol):
                 return b'', address
             # end if
 
-            length = int(length_message[:length_message.find(" ")])
+            length = int(length_message)
         # end if
 
         size = buffer or self.size

@@ -4,7 +4,7 @@ import socket
 from typing import Tuple
 
 from socketsio import (
-    Server, Socket, BCP, TCP, UDP
+    Server, Socket, BHP, TCP, UDP
 )
 
 from looperator import Handler, Operator
@@ -44,7 +44,7 @@ def action(client: Socket) -> None:
 
 HOST = "127.0.0.1"
 PROTOCOL = 'TCP'
-PORT = 5000
+PORT = 5010
 
 def main() -> None:
     """Tests the program."""
@@ -53,7 +53,7 @@ def main() -> None:
         protocol = UDP()
 
     elif PROTOCOL == 'TCP':
-        protocol = BCP(TCP())
+        protocol = BHP(TCP())
 
     else:
         raise ValueError(f"Invalid protocol type: {PROTOCOL}")
