@@ -108,20 +108,20 @@ class BaseProtocol(metaclass=ABCMeta):
 class BufferedProtocol(BaseProtocol, metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
 
-    SIZE = 1024
+    BUFFER = 1024
 
-    def __init__(self, size: int = None) -> None:
+    def __init__(self, buffer: int = None) -> None:
         """
         Defines the attributes of the protocol.
 
-        :param size: The buffer size.
+        :param buffer: The buffer size.
         """
 
-        if size is None:
-            size = self.SIZE
+        if buffer is None:
+            buffer = self.BUFFER
         # end if
 
-        self.size = size
+        self.buffer = buffer
     # end __init__
 # end BufferedProtocol
 
@@ -174,7 +174,7 @@ class TCP(BufferedProtocol):
         :return: The received message from the server.
         """
 
-        return connection.recv(buffer or self.size), address
+        return connection.recv(buffer or self.buffer), address
     # end receive
 # end TCP
 
@@ -231,7 +231,7 @@ class UDP(BufferedProtocol):
         :return: The received message from the server.
         """
 
-        return connection.recvfrom(buffer or self.size)
+        return connection.recvfrom(buffer or self.buffer)
     # end receive
 # end UDP
 
@@ -291,7 +291,6 @@ class BHP(BaseProtocol):
             self,
             connection: Connection,
             buffer: int = None,
-            length: int = None,
             address: Address = None
     ) -> tuple[bytes, Address | None]:
         """
@@ -299,27 +298,30 @@ class BHP(BaseProtocol):
 
         :param connection: The sockets' connection object.
         :param buffer: The buffer size to collect.
-        :param length: The length of the message to expect.
+        :param buffer: The length of the message to expect.
         :param address: The address of the sender.
 
         :return: The received message from the server.
         """
 
-        if length is None:
+        if buffer is None:
             message, address = self.protocol.receive(
                 connection=connection, buffer=self.HEADER, address=address
             )
             length_message = message.decode()
 
-            if not length_message or (length_message.count("0") == len(length_message)):
+            if (
+                not length_message or
+                (length_message.count("0") == len(length_message))
+            ):
                 return b'', address
             # end if
 
-            length = int(length_message)
+            buffer = int(length_message)
         # end if
 
         return self.protocol.receive(
-            connection=connection, buffer=length, address=address
+            connection=connection, buffer=buffer, address=address
         )
     # end receive
 # end BCP
@@ -327,30 +329,28 @@ class BHP(BaseProtocol):
 class BCP(BHP):
     """Defines the basic parameters for the communication."""
 
-    HEADER = 32
-
-    def __init__(self, protocol: TCP, size: int = None) -> None:
+    def __init__(self, protocol: TCP, buffer: int = None) -> None:
         """
         Defines the base protocol.
 
         :param protocol: The base protocol object to use.
-        :param size: The buffer size.
+        :param buffer: The buffer size.
         """
 
         super().__init__(protocol=protocol)
 
-        self._size = size
+        self._buffer = buffer
     # end __init__
 
     @property
-    def size(self) -> int:
+    def buffer(self) -> int:
         """
-        Returns the buffer size.
+        Returns the buffer buffer.
 
-        :return: The buffer size.
+        :return: The buffer buffer.
         """
 
-        if self._size is None:
+        if self._buffer is None:
             if not isinstance(self.protocol, BufferedProtocol):
                 raise ValueError(
                     f"Size is not defined and protocol is "
@@ -358,22 +358,22 @@ class BCP(BHP):
                 )
             # end if
 
-            return self.protocol.size
+            return self.protocol.buffer
         # end if
 
-        return self._size
-    # end size
+        return self._buffer
+    # end buffer
 
-    @size.setter
-    def size(self, value: int) -> None:
+    @buffer.setter
+    def buffer(self, value: int) -> None:
         """
-        Returns the buffer size.
+        Returns the buffer buffer.
 
-        :param value: The buffer size.
+        :param value: The buffer buffer.
         """
 
-        self._size = value
-    # end size
+        self._buffer = value
+    # end buffer
 
     def receive(
             self,
@@ -406,9 +406,9 @@ class BCP(BHP):
             length = int(length_message)
         # end if
 
-        size = buffer or self.size
+        buffer = buffer or self.buffer
 
-        if size >= length:
+        if buffer >= length:
             return self.protocol.receive(
                 connection=connection, buffer=length, address=address
             )
@@ -416,17 +416,17 @@ class BCP(BHP):
 
         data: list[bytes] = []
 
-        for _ in range(length // size):
+        for _ in range(length // buffer):
             payload, address = self.protocol.receive(
-                connection=connection, buffer=size, address=address
+                connection=connection, buffer=buffer, address=address
             )
 
             data.append(payload)
         # end for
 
-        if length % size:
+        if length % buffer:
             payload, address = self.protocol.receive(
-                connection=connection, buffer=length % size, address=address
+                connection=connection, buffer=length % buffer, address=address
             )
 
             data.append(payload)

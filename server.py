@@ -44,7 +44,7 @@ def action(client: Socket) -> None:
 
 HOST = "127.0.0.1"
 PROTOCOL = 'TCP'
-PORT = 5010
+PORT = 5000
 
 def main() -> None:
     """Tests the program."""

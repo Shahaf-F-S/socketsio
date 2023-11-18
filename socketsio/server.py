@@ -60,13 +60,13 @@ class ServerSideClient(Socket):
             self.connection = None
         # end
 
-        self._connected = True
+        self._connected = False
     # end close
 
     def validate_connection(self) -> None:
         """Validates a connection."""
 
-        if not self.connection:
+        if not self.connected or not self.connection:
             raise ValueError("The socket is already closed.")
         # end if
     # end validate_connection
