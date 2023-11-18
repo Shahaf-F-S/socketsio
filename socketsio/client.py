@@ -118,6 +118,8 @@ class Client(Socket):
         :param connection: The sockets' connection object.
         :param data: The message to send to the client.
         :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
 
         self.validate_connected()

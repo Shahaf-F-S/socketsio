@@ -103,6 +103,8 @@ class Socket:
         :param data: The message to send to the client.
         :param connection: The sockets' connection object.
         :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
 
         return self.protocol.send(

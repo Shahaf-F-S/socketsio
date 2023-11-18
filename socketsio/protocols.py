@@ -83,6 +83,8 @@ class BaseProtocol(metaclass=ABCMeta):
         :param data: The message to send to the client.
         :param connection: The sockets' connection object.
         :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
     # end send
 
@@ -151,6 +153,8 @@ class TCP(BufferedProtocol):
         :param data: The message to send to the client.
         :param connection: The sockets' connection object.
         :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
 
         connection.send(data)
@@ -204,6 +208,8 @@ class UDP(BufferedProtocol):
         :param data: The message to send to the client.
         :param connection: The sockets' connection object.
         :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
 
         if address is None:
@@ -272,6 +278,8 @@ class BHP(BaseProtocol):
         :param data: The message to send to the client.
         :param connection: The sockets' connection object.
         :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
 
         message_len = len(data)
@@ -298,7 +306,6 @@ class BHP(BaseProtocol):
 
         :param connection: The sockets' connection object.
         :param buffer: The buffer size to collect.
-        :param buffer: The length of the message to expect.
         :param address: The address of the sender.
 
         :return: The received message from the server.

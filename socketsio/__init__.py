@@ -5,3 +5,4 @@ from socketsio.server import *
 from socketsio.client import *
 from socketsio.protocols import *
 from socketsio.utils import *
+from socketsio.queue import SocketSenderQueue
