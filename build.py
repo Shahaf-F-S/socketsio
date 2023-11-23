@@ -347,7 +347,7 @@ def collect_files(location: str | pathlib.Path, levels: int = None) -> list[str]
 
 def setup(
         package: str | pathlib.Path, *,
-        readme: Iterable[str | pathlib.Path] = None,
+        readme: str | bool | pathlib.Path = None,
         exclude: Iterable[str | pathlib.Path] = None,
         include: Iterable[str | pathlib.Path] = None,
         requirements: str | pathlib.Path = None,
@@ -377,7 +377,7 @@ def setup(
         include = list(include)
     # end if
 
-    if readme is None:
+    if readme in (None, True):
         readme = 'README.md' if os.path.exists('README.md') else None
     # end if
 
@@ -385,7 +385,7 @@ def setup(
         exclude = ()
     # end if
 
-    if readme is not None:
+    if isinstance(readme, (str, pathlib.Path)):
         with codecs.open(str(readme), 'r') as desc_file:
             long_description = desc_file.read()
         # end open
@@ -429,10 +429,13 @@ def setup(
     )
 
     build_manifest(include=include, manifest=manifest)
-    build_pyproject(project=project, **kwargs)
+
+    if project:
+        build_pyproject(project=project, **kwargs)
+    # end if
 
     _setup(
-        project=project,
+        **(dict(project=project) if project else {}),
         packages=packages,
         long_description=long_description,
         include_package_data=True,
