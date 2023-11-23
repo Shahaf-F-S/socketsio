@@ -1,6 +1,6 @@
 # client.py
 
-from socketsio import Client, BCP, TCP, UDP, SocketSenderQueue
+from socketsio import Client, BHP, TCP, UDP, SocketSenderQueue
 
 HOST = "127.0.0.1"
 PROTOCOL = 'TCP'
@@ -13,7 +13,7 @@ def main() -> None:
         protocol = UDP()
 
     elif PROTOCOL == 'TCP':
-        protocol = BCP(TCP())
+        protocol = BHP(TCP())
 
     else:
         raise ValueError(f"Invalid protocol type: {PROTOCOL}")

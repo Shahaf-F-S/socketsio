@@ -34,7 +34,9 @@ class ServerSideClient(Socket):
         """
 
         super().__init__(
-            protocol=protocol, connection=connection, address=address
+            protocol=protocol,
+            connection=connection,
+            address=address
         )
 
         self._connected = self.connection is not None
@@ -54,11 +56,15 @@ class ServerSideClient(Socket):
     def close(self) -> None:
         """Closes the connection."""
 
+        if not self.connected or not self.connection:
+            return
+        # end if
+
         if not self.is_udp():
             self.connection.close()
 
             self.connection = None
-        # end
+        # end if
 
         self._connected = False
     # end close
@@ -95,7 +101,10 @@ class Server(Socket):
             sequential = False
         # end if
 
-        super().__init__(connection=connection, protocol=protocol)
+        super().__init__(
+            connection=connection,
+            protocol=protocol
+        )
 
         self._listening = False
         self._bound = False
@@ -178,7 +187,9 @@ class Server(Socket):
                 self.rebind()
 
             else:
-                raise ValueError("Cannot start listening before binding.")
+                raise ValueError(
+                    "Cannot start listening before binding."
+                )
             # end if
         # end if
     # end validate_binding

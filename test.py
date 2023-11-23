@@ -3,9 +3,7 @@
 import socket
 from typing import Tuple
 
-from socketsio import (
-    Client, Server, Socket, BHP, TCP, UDP
-)
+from socketsio import Client, Server, Socket, BHP, TCP, UDP
 
 from looperator import Handler, Operator
 
