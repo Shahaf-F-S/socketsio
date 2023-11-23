@@ -309,7 +309,7 @@ def build_manifest(
         # end open
     # end if
 # end build_manifest
-def collect_files(location: str, levels: int = None) -> list[str]:
+def collect_files(location: str | pathlib.Path, levels: int = None) -> list[str]:
     """
     Collects all the file paths from the location with the extension.
 
@@ -347,9 +347,9 @@ def collect_files(location: str, levels: int = None) -> list[str]:
 
 def setup(
         package: str | pathlib.Path, *,
-        readme: Iterable[str] = None,
-        exclude: Iterable[str] = None,
-        include: Iterable[str] = None,
+        readme: Iterable[str | pathlib.Path] = None,
+        exclude: Iterable[str | pathlib.Path] = None,
+        include: Iterable[str | pathlib.Path] = None,
         requirements: str | pathlib.Path = None,
         dev_requirements: str | pathlib.Path = None,
         project: str | pathlib.Path = None,
@@ -386,7 +386,7 @@ def setup(
     # end if
 
     if readme is not None:
-        with codecs.open(readme, 'r') as desc_file:
+        with codecs.open(str(readme), 'r') as desc_file:
             long_description = desc_file.read()
         # end open
 
@@ -401,16 +401,15 @@ def setup(
     include = list(
         set(
             include + [
-                file for file in [
-                    requirements, dev_requirements, project, "build.py"
-                ]
-                if file and os.path.exists(file)
+                file for file in
+                [requirements, dev_requirements, project, "build.py"]
+                if file and os.path.exists(str(file))
             ]
         )
     )
 
     for included in list(include):
-        if os.path.isdir(included):
+        if included is not None and os.path.isdir(str(included)):
             include += list(set(collect_files(location=included)))
         # end if
     # end for
