@@ -22,9 +22,8 @@ def main() -> None:
             "*.pyc"
         ],
         requirements="requirements.txt",
-        dev_requirements="requirements-dev.txt",
         name='pysocketsio',
-        version='1.6.1',
+        version='1.7.4',
         description=(
             "This module provides a wrapper for the built-in "
             "socket module in python. The program provides server and. "
@@ -39,9 +38,6 @@ def main() -> None:
             "Intended Audience :: Developers",
             "License :: OSI Approved :: MIT License",
             "Programming Language :: Python",
-            "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
             "Operating System :: OS Independent"
