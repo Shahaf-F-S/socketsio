@@ -17,7 +17,7 @@ class Client(Socket):
 
     def __init__(
             self,
-            protocol: BaseProtocol,
+            protocol: BaseProtocol = None,
             connection: Connection = None,
             address: Address = None
     ) -> None:
@@ -30,7 +30,7 @@ class Client(Socket):
 
         super().__init__(
             connection=connection,
-            protocol=protocol,
+            protocol=protocol or BaseProtocol.protocol(),
             address=address
         )
 

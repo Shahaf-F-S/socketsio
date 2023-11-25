@@ -85,7 +85,7 @@ class Server(Socket):
 
     def __init__(
             self,
-            protocol: BaseProtocol,
+            protocol: BaseProtocol = None,
             connection: Connection = None,
             sequential: bool = True
     ) -> None:
@@ -103,7 +103,7 @@ class Server(Socket):
 
         super().__init__(
             connection=connection,
-            protocol=protocol
+            protocol=protocol or BaseProtocol.protocol()
         )
 
         self._listening = False

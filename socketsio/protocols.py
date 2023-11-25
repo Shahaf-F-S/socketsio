@@ -1,6 +1,7 @@
 # protocols.py
 
 import socket
+from typing import Callable
 from abc import ABCMeta, abstractmethod
 
 from represent import represent
@@ -14,13 +15,16 @@ __all__ = [
     "TCP",
     "UDP",
     "BCP",
+    "BHP",
     "tcp_socket",
     "udp_socket",
     "bluetooth_socket",
     "is_udp",
     "is_tcp",
     "is_tcp_bluetooth",
-    "BHP"
+    "default_protocol",
+    "set_default_protocol",
+    "reset_default_protocol"
 ]
 
 def tcp_socket() -> Connection:
@@ -56,9 +60,28 @@ def bluetooth_socket() -> socket.socket:
     )
 # end bluetooth_socket
 
+ProtocolConstructor = Callable[[], "BaseProtocol"] | "BaseProtocol"
+
 @represent
 class BaseProtocol(metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
+
+    DEFAULT: ProtocolConstructor = None
+
+    @classmethod
+    def protocol(cls) -> "BaseProtocol":
+        """
+        Returns a protocol object.
+
+        :return: The default protocol object.
+        """
+
+        if cls.DEFAULT is None:
+            return BHP()
+        # end if
+
+        return cls.DEFAULT()
+    # end protocol
 
     @staticmethod
     @abstractmethod
@@ -246,14 +269,14 @@ class BHP(BaseProtocol):
 
     HEADER = 32
 
-    def __init__(self, protocol: TCP) -> None:
+    def __init__(self, protocol: TCP = None) -> None:
         """
         Defines the base protocol.
 
         :param protocol: The base protocol object to use.
         """
 
-        self.protocol = protocol
+        self.protocol = protocol or TCP()
     # end __init__
 
     def socket(self) -> Connection:
@@ -282,15 +305,14 @@ class BHP(BaseProtocol):
         :return: The received message from the server.
         """
 
-        message_len = len(data)
+        length_message = str(len(data))
+        padding = "0" * (self.HEADER - len(length_message))
 
-        length_message = (
-            ("0" * (self.HEADER - len(str(message_len)))) +
-            str(message_len)
-        ).encode()
+        data = (padding + length_message).encode() + data
 
         return self.protocol.send(
-            connection=connection, data=length_message + data,
+            connection=connection,
+            data=data,
             address=address
         )
     # end send
@@ -313,7 +335,9 @@ class BHP(BaseProtocol):
 
         if buffer is None:
             message, address = self.protocol.receive(
-                connection=connection, buffer=self.HEADER, address=address
+                connection=connection,
+                buffer=self.HEADER,
+                address=address
             )
             length_message = message.decode()
 
@@ -328,7 +352,9 @@ class BHP(BaseProtocol):
         # end if
 
         return self.protocol.receive(
-            connection=connection, buffer=buffer, address=address
+            connection=connection,
+            buffer=buffer,
+            address=address
         )
     # end receive
 # end BCP
@@ -400,24 +426,31 @@ class BCP(BHP):
         :return: The received message from the server.
         """
 
-        if length is None:
+        if buffer is None:
             message, address = self.protocol.receive(
-                connection=connection, buffer=self.HEADER, address=address
+                connection=connection,
+                buffer=self.HEADER,
+                address=address
             )
             length_message = message.decode()
 
-            if not length_message or length_message == '0':
+            if (
+                not length_message or
+                (length_message.count("0") == len(length_message))
+            ):
                 return b'', address
             # end if
 
-            length = int(length_message)
+            buffer = int(length_message)
         # end if
 
         buffer = buffer or self.buffer
 
         if buffer >= length:
             return self.protocol.receive(
-                connection=connection, buffer=length, address=address
+                connection=connection,
+                buffer=length,
+                address=address
             )
         # end if
 
@@ -425,7 +458,9 @@ class BCP(BHP):
 
         for _ in range(length // buffer):
             payload, address = self.protocol.receive(
-                connection=connection, buffer=buffer, address=address
+                connection=connection,
+                buffer=buffer,
+                address=address
             )
 
             data.append(payload)
@@ -433,7 +468,9 @@ class BCP(BHP):
 
         if length % buffer:
             payload, address = self.protocol.receive(
-                connection=connection, buffer=length % buffer, address=address
+                connection=connection,
+                buffer=length % buffer,
+                address=address
             )
 
             data.append(payload)
@@ -478,3 +515,29 @@ def is_tcp_bluetooth(connection: Connection) -> bool:
 
     return is_tcp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
 # end is_tcp_bluetooth
+
+def default_protocol() -> BaseProtocol:
+    """
+    Returns a protocol object.
+
+    :return: The default protocol object.
+    """
+
+    return BaseProtocol.protocol()
+# end default_protocol
+
+def set_default_protocol(constructor: ProtocolConstructor) -> None:
+    """
+    Sets a new default protocol.
+
+    :param constructor: The default protocol object constructor.
+    """
+
+    BaseProtocol.DEFAULT = constructor
+# end default_protocol
+
+def reset_default_protocol() -> None:
+    """Resets protocol object."""
+
+    BaseProtocol.DEFAULT = None
+# end default_protocol
