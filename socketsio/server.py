@@ -15,6 +15,7 @@ __all__ = [
 Connection = socket.socket
 Address = tuple[str, int]
 Action = Callable[[Socket], Any]
+Output = tuple[bytes, Address | None]
 
 class ServerSideClient(Socket):
     """A socket connection I/O object."""
@@ -36,7 +37,8 @@ class ServerSideClient(Socket):
         super().__init__(
             protocol=protocol,
             connection=connection,
-            address=address
+            address=address,
+            reusable=False
         )
 
         self._connected = self.connection is not None
@@ -69,6 +71,18 @@ class ServerSideClient(Socket):
         self._connected = False
     # end close
 
+    def make_reusable(self) -> None:
+        """Makes the socket reusable."""
+
+        self._reusable = True
+    # end make_reusable
+
+    def make_unreusable(self) -> None:
+        """Makes the socket unreusable."""
+
+        self._reusable = False
+    # end make_unreusable
+
     def validate_connection(self) -> None:
         """Validates a connection."""
 
@@ -87,7 +101,9 @@ class Server(Socket):
             self,
             protocol: BaseProtocol = None,
             connection: Connection = None,
-            sequential: bool = True
+            address: Address = None,
+            reusable: bool = False,
+            sequential: bool = True,
     ) -> None:
         """
         Defines the attributes of a server.
@@ -95,6 +111,8 @@ class Server(Socket):
         :param connection: The socket object of the server.
         :param protocol: The communication protocol object.
         :param sequential: The value to sequentially find clients.
+        :param address: The address to save for the socket.
+        :param reusable: The value to make the socket reusable.
         """
 
         if sequential is None:
@@ -103,7 +121,9 @@ class Server(Socket):
 
         super().__init__(
             connection=connection,
-            protocol=protocol or BaseProtocol.protocol()
+            protocol=protocol or BaseProtocol.protocol(),
+            address=address,
+            reusable=reusable
         )
 
         self._listening = False
@@ -237,27 +257,70 @@ class Server(Socket):
         )
     # end _action_parameters
 
-    def _handle(
+    def send(
             self,
-            protocol: BaseProtocol = None,
-            action: Action = None
-    ) -> None:
+            data: bytes,
+            connection: Connection = None,
+            address: Address = None
+    ) -> Output:
         """
-        Sends a message to the client by its connection.
+        Sends a message to the client or server by its connection.
 
-        :param protocol: The protocol to use for sockets communication.
-        :param action: The action to call.
+        :param connection: The sockets' connection object.
+        :param data: The message to send to the client.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
         """
 
-        action(self._action_parameters(protocol=protocol))
-    # end _handle
+        if not self.is_udp():
+            raise ValueError(
+                "Cannot directly send/receive "
+                "with a non-UDP server socket."
+            )
+        # end if
+
+        self.validate_binding()
+
+        return self.protocol.send(
+            connection=connection or self.connection,
+            data=data, address=address or self._address
+        )
+    # end send
+
+    def receive(
+            self,
+            connection: Connection = None,
+            address: Address = None
+    ) -> Output:
+        """
+        Receive a message from the client or server by its connection.
+
+        :param connection: The sockets' connection object.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+
+        if not self.is_udp():
+            raise ValueError(
+                "Cannot directly send/receive "
+                "with a non-UDP server socket."
+            )
+        # end if
+
+        self.validate_binding()
+
+        return self.protocol.receive(
+            connection=connection or self.connection,
+            address=address or self._address
+        )
+    # end receive
 
     def close(self) -> None:
         """Closes the connection."""
 
-        self.connection.close()
-
-        self.connection = None
+        super().close()
 
         self._listening = False
         self._bound = False
@@ -306,14 +369,12 @@ class Server(Socket):
         if sequential:
             parameters = self._action_parameters(protocol=protocol)
 
-            threading.Thread(
-                target=lambda: action(parameters)
-            ).start()
+            threading.Thread(target=lambda: action(parameters)).start()
 
         else:
             threading.Thread(
-                target=lambda: self._handle(
-                    protocol=protocol, action=action
+                target=lambda: action(
+                    self._action_parameters(protocol=protocol)
                 )
             ).start()
         # end if

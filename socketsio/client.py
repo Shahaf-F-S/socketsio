@@ -11,6 +11,7 @@ __all__ = [
 
 Connection = socket.socket
 Address = tuple[str, int]
+Output = tuple[bytes, Address | None]
 
 class Client(Socket):
     """A class to represent the server object."""
@@ -19,19 +20,23 @@ class Client(Socket):
             self,
             protocol: BaseProtocol = None,
             connection: Connection = None,
-            address: Address = None
+            address: Address = None,
+            reusable: bool = False
     ) -> None:
         """
         Defines the attributes of a server.
 
         :param connection: The socket object of the server.
         :param protocol: The communication protocol object.
+        :param address: The address to save for the socket.
+        :param reusable: The value to make the socket reusable.
         """
 
         super().__init__(
             connection=connection,
             protocol=protocol or BaseProtocol.protocol(),
-            address=address
+            address=address,
+            reusable=reusable
         )
 
         self._connected = False
@@ -58,6 +63,18 @@ class Client(Socket):
 
         return self._address is not None
     # end preconnected
+
+    def make_reusable(self) -> None:
+        """Makes the socket reusable."""
+
+        self._reusable = True
+    # end make_reusable
+
+    def make_unreusable(self) -> None:
+        """Makes the socket unreusable."""
+
+        self._reusable = False
+    # end make_unreusable
 
     def connect(self, address: Address) -> None:
         """
@@ -101,7 +118,10 @@ class Client(Socket):
                 self.reconnect()
 
             else:
-                raise ValueError("Socket is not connected.")
+                raise ValueError(
+                    "Socket address is not defined "
+                    "for automatic connection."
+                )
             # end if
         # end if
     # end validate_connection
@@ -111,7 +131,7 @@ class Client(Socket):
             data: bytes,
             connection: Connection = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Sends a message to the client or server by its connection.
 
@@ -134,7 +154,7 @@ class Client(Socket):
             self,
             connection: Connection = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Receive a message from the client or server by its connection.
 
@@ -155,9 +175,7 @@ class Client(Socket):
     def close(self) -> None:
         """Closes the connection."""
 
-        self.connection.close()
-
-        self.connection = None
+        super().close()
 
         self._connected = False
     # end close

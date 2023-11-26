@@ -8,6 +8,7 @@ from represent import represent
 
 Connection = socket.socket
 Address = tuple[str, int]
+Output = tuple[bytes, Address | None]
 
 __all__ = [
     "BufferedProtocol",
@@ -18,10 +19,11 @@ __all__ = [
     "BHP",
     "tcp_socket",
     "udp_socket",
-    "bluetooth_socket",
+    "tcp_bluetooth_socket",
     "is_udp",
     "is_tcp",
     "is_tcp_bluetooth",
+    "is_udp_bluetooth",
     "default_protocol",
     "set_default_protocol",
     "reset_default_protocol"
@@ -34,7 +36,10 @@ def tcp_socket() -> Connection:
     :return: The socket object.
     """
 
-    return socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    return socket.socket(
+        socket.AF_INET,
+        socket.SOCK_STREAM
+    )
 # end tcp_socket
 
 def udp_socket() -> Connection:
@@ -44,10 +49,13 @@ def udp_socket() -> Connection:
     :return: The socket object.
     """
 
-    return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.socket(
+        socket.AF_INET,
+        socket.SOCK_DGRAM
+    )
 # end udp_socket
 
-def bluetooth_socket() -> socket.socket:
+def tcp_bluetooth_socket() -> socket.socket:
     """
     Sends a request through the bluetooth sockets.
 
@@ -55,10 +63,25 @@ def bluetooth_socket() -> socket.socket:
     """
 
     return socket.socket(
-        socket.AF_BLUETOOTH, socket.SOCK_STREAM,
+        socket.AF_BLUETOOTH,
+        socket.SOCK_STREAM,
         socket.BTPROTO_RFCOMM
     )
-# end bluetooth_socket
+# end tcp_bluetooth_socket
+
+def udp_bluetooth_socket() -> socket.socket:
+    """
+    Sends a request through the bluetooth sockets.
+
+    :return: The client object.
+    """
+
+    return socket.socket(
+        socket.AF_BLUETOOTH,
+        socket.SOCK_DGRAM,
+        socket.BTPROTO_RFCOMM
+    )
+# end udp_bluetooth_socket
 
 ProtocolConstructor = Callable[[], "BaseProtocol"] | "BaseProtocol"
 
@@ -99,7 +122,7 @@ class BaseProtocol(metaclass=ABCMeta):
             connection: Connection,
             data: bytes,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Sends a message to the client or server by its connection.
 
@@ -117,7 +140,7 @@ class BaseProtocol(metaclass=ABCMeta):
             connection: Connection,
             buffer: int = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Receive a message from the client or server by its connection.
 
@@ -169,7 +192,7 @@ class TCP(BufferedProtocol):
             connection: Connection,
             data: bytes,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Sends a message to the client or server by its connection.
 
@@ -190,7 +213,7 @@ class TCP(BufferedProtocol):
             connection: Connection,
             buffer: int = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Receive a message from the client or server by its connection.
 
@@ -224,7 +247,7 @@ class UDP(BufferedProtocol):
             connection: Connection,
             data: bytes,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Sends a message to the client or server by its connection.
 
@@ -249,7 +272,7 @@ class UDP(BufferedProtocol):
             connection: Connection,
             buffer: int = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Receive a message from the client or server by its connection.
 
@@ -294,7 +317,7 @@ class BHP(BaseProtocol):
             connection: Connection,
             data: bytes,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Sends a message to the client or server by its connection.
 
@@ -322,7 +345,7 @@ class BHP(BaseProtocol):
             connection: Connection,
             buffer: int = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Receive a message from the client or server by its connection.
 
@@ -414,7 +437,7 @@ class BCP(BHP):
             buffer: int = None,
             length: int = None,
             address: Address = None
-    ) -> tuple[bytes, Address | None]:
+    ) -> Output:
         """
         Receive a message from the client or server by its connection.
 
@@ -506,7 +529,7 @@ def is_udp(connection: Connection) -> bool:
 
 def is_tcp_bluetooth(connection: Connection) -> bool:
     """
-    Checks if the socket is a UDP socket.
+    Checks if the socket is a TCP bluetooth socket.
 
     :param connection: The socket connection object.
 
@@ -515,6 +538,18 @@ def is_tcp_bluetooth(connection: Connection) -> bool:
 
     return is_tcp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
 # end is_tcp_bluetooth
+
+def is_udp_bluetooth(connection: Connection) -> bool:
+    """
+    Checks if the socket is a UDP bluetooth socket.
+
+    :param connection: The socket connection object.
+
+    :return: The boolean flag.
+    """
+
+    return is_udp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
+# end is_udp_bluetooth
 
 def default_protocol() -> BaseProtocol:
     """
