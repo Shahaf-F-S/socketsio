@@ -165,6 +165,18 @@ class Server(Socket):
         return self._address is not None
     # end prebound
 
+    def make_reusable(self) -> None:
+        """Makes the socket reusable."""
+
+        self._reusable = True
+    # end make_reusable
+
+    def make_unreusable(self) -> None:
+        """Makes the socket unreusable."""
+
+        self._reusable = False
+    # end make_unreusable
+
     def bind(self, address: Address) -> None:
         """
         Binds the connection of the server.
