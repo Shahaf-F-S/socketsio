@@ -1,5 +1,6 @@
 # sockets.py
 
+from typing import Self
 import socket
 
 from socketsio.protocols import (
@@ -243,10 +244,28 @@ class Socket:
 
         self.connection.close()
 
-        self.connection = self.protocol.socket() if self.reusable else None
+        if self.reusable:
+            self.connection = self.protocol.socket()
 
-        if not self.connection:
+        else:
+            self.connection = None
+
             self._closed = True
         # end if
     # end close
+
+    def clone(self) -> Self:
+        """
+        Returns a copy of the socket wrapper object.
+
+        :return: The new socket object.
+        """
+
+        return Socket(
+            protocol=self.protocol,
+            connection=self.protocol.socket(),
+            address=self.address,
+            reusable=self.reusable
+        )
+    # end clone
 # end Socket

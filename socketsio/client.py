@@ -1,5 +1,6 @@
 # client.py
 
+from typing import Self
 import socket
 
 from socketsio.protocols import BaseProtocol
@@ -179,4 +180,19 @@ class Client(Socket):
 
         self._connected = False
     # end close
+
+    def clone(self) -> Self:
+        """
+        Returns a copy of the socket wrapper object.
+
+        :return: The new socket object.
+        """
+
+        return Client(
+            protocol=self.protocol,
+            connection=self.protocol.socket(),
+            address=self.address,
+            reusable=self.reusable
+        )
+    # end clone
 # end Client

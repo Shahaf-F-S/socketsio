@@ -1,7 +1,7 @@
 # server.py
 
 import socket
-from typing import Any, Callable
+from typing import Any, Callable, Self
 import threading
 
 from socketsio.protocols import BaseProtocol
@@ -391,4 +391,20 @@ class Server(Socket):
             ).start()
         # end if
     # end handle
+
+    def clone(self) -> Self:
+        """
+        Returns a copy of the socket wrapper object.
+
+        :return: The new socket object.
+        """
+
+        return Server(
+            protocol=self.protocol,
+            connection=self.protocol.socket(),
+            address=self.address,
+            reusable=self.reusable,
+            sequential=self.sequential
+        )
+    # end clone
 # end Server
