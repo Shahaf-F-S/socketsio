@@ -13,6 +13,7 @@ Output = tuple[bytes, Address | None]
 __all__ = [
     "BufferedProtocol",
     "BaseProtocol",
+    "EmptyProtocol",
     "TCP",
     "UDP",
     "BCP",
@@ -172,6 +173,64 @@ class BufferedProtocol(BaseProtocol, metaclass=ABCMeta):
         self.buffer = buffer
     # end __init__
 # end BufferedProtocol
+
+class EmptyProtocol(BaseProtocol, metaclass=ABCMeta):
+    """Defines the basic parameters for the communication."""
+
+    def __init__(
+            self,
+            send: Callable[[Connection, bytes, Address | None], Output],
+            receive: Callable[[Connection, int | None, Address | None], Output]
+    ) -> None:
+        """
+        Defines the attributes of the protocol.
+
+        :param send: The function to send data.
+        :param receive: The function to received data.
+        """
+
+        self._send = send
+        self._receive = receive
+    # end __init__
+
+    def send(
+            self,
+            connection: Connection,
+            data: bytes,
+            address: Address = None
+    ) -> Output:
+        """
+        Sends a message to the client or server by its connection.
+
+        :param data: The message to send to the client.
+        :param connection: The sockets' connection object.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+
+        return self._send(connection, data, address)
+    # end send
+
+    def receive(
+            self,
+            connection: Connection,
+            buffer: int = None,
+            address: Address = None
+    ) -> Output:
+        """
+        Receive a message from the client or server by its connection.
+
+        :param connection: The sockets' connection object.
+        :param buffer: The buffer size to collect.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+
+        return self._receive(connection, buffer, address)
+    # end receive
+# end EmptyProtocol
 
 class TCP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
