@@ -118,7 +118,6 @@ class SocketSenderQueue(Operator):
                 data = self.queue.pop(0)
 
                 if data[0]:
-                    print(data)
                     self.socket.send(*data)
                 # end if
 
