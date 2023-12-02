@@ -318,6 +318,7 @@ class Server(Socket):
         except OSError as e:
             if self.closed:
                 return self.protocol.socket(), ("", 0)
+            # end if
 
             raise e
         # end try

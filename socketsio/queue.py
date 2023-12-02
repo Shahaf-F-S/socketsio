@@ -63,53 +63,6 @@ class SocketSenderQueue(Operator):
         )
     # end __init__
 
-    @property
-    def address(self) -> Address:
-        """
-        Returns the ip and port of the binding.
-
-        :return: The address tuple.
-        """
-
-        return self.socket.address
-    # end address
-
-    def is_tcp(self) -> bool:
-        """
-        Checks if the socket is a TCP socket.
-
-        :return: The boolean flag.
-        """
-
-        return self.socket.is_tcp()
-    # end is_tcp
-
-    def is_udp(self) -> bool:
-        """
-        Checks if the socket is a UDP socket.
-
-        :return: The boolean flag.
-        """
-
-        return self.socket.is_udp()
-    # end is_udp
-
-    def is_tcp_bluetooth(self) -> bool:
-        """
-        Checks if the socket is a UDP socket.
-
-        :return: The boolean flag.
-        """
-
-        return self.socket.is_tcp_bluetooth()
-    # end is_tcp_bluetooth
-
-    def validate_connection(self) -> None:
-        """Validates a connection."""
-
-        self.socket.validate_connection()
-    # end validate_connection
-
     def send_queue(self) -> None:
         """Sends the message from the queue"""
 
@@ -164,6 +117,8 @@ class SocketSenderQueue(Operator):
 
     def close(self) -> None:
         """Closes the connection."""
+
+        self.stop()
 
         self.socket.close()
     # end close
