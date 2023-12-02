@@ -10,10 +10,11 @@ from looperator import Handler, Operator
 Connection = socket.socket
 Address = Tuple[str, int]
 
-def action(client: Socket) -> None:
+def action(server: Server, client: Socket) -> None:
     """
     Sets or updates clients data in the clients' container .
 
+    :param server: The server controlling the communication.
     :param client: The client socket object.
     """
 
@@ -21,7 +22,7 @@ def action(client: Socket) -> None:
         exception_handler=print,
         cleanup_callback=client.close
     ):
-        while True:
+        while not (client.closed or server.closed):
             received, address = client.receive()
 
             if not received:
@@ -49,7 +50,10 @@ def main() -> None:
     server = Server()
     server.bind((HOST, PORT))
 
-    service = Operator(operation=lambda: server.handle(action=action))
+    service = Operator(
+        operation=lambda: server.handle(action=action),
+        stopping_collector=lambda: server.closed
+    )
     service.run()
 
     client = Client()
@@ -59,6 +63,10 @@ def main() -> None:
         client.send((", ".join(["hello world"] * 3)).encode())
         print("client:", client.receive())
     # end for
+
+    service.stop()
+    client.close()
+    server.close()
 # end main
 
 if __name__ == '__main__':

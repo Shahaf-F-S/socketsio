@@ -10,18 +10,19 @@ from looperator import Handler, Operator
 Connection = socket.socket
 Address = Tuple[str, int]
 
-def action(client: Socket) -> None:
+def action(server: Server, client: Socket) -> None:
     """
     Sets or updates clients data in the clients' container .
 
+    :param server: The server controlling the communication.
     :param client: The client socket object.
     """
 
     with Handler(
-        exception_handler=print,
-        cleanup_callback=client.close
+            exception_handler=print,
+            cleanup_callback=client.close
     ):
-        while True:
+        while not (client.closed or server.closed):
             received, address = client.receive()
 
             if not received:
@@ -31,8 +32,8 @@ def action(client: Socket) -> None:
             print("server:", (received, address))
 
             sent = (
-                f"server received from "
-                f"{address}: ".encode() + received
+                    f"server received from "
+                    f"{address}: ".encode() + received
             )
 
             client.send(sent)

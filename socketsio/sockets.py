@@ -1,6 +1,6 @@
 # sockets.py
 
-from typing import Self
+from typing import Self, Callable, Any
 import socket
 
 from socketsio.protocols import (
@@ -35,7 +35,11 @@ class Socket:
             protocol: BaseProtocol,
             connection: Connection = None,
             address: Address = None,
-            reusable: bool = False
+            reusable: bool = False,
+            on_init: Callable[[Self], Any] = None,
+            on_send: Callable[[Self, bytes, Address | None], Any] = None,
+            on_receive: Callable[[Self, bytes, Address | None], Any] = None,
+            on_close: Callable[[Self], Any] = None
     ) -> None:
         """
         Defines the attributes of a server.
@@ -44,16 +48,31 @@ class Socket:
         :param protocol: The communication protocol object.
         :param address: The address of the connection.
         :param reusable: The value to make the socket reusable.
+        :param on_init: A callback to run on init.
+        :param on_send: A callback to run on send.
+        :param on_receive: A callback to run on receive.
+        :param on_close: A callback to run on close.
         """
 
         self.connection = connection or protocol.socket()
         self.protocol = protocol
+
         self._reusable = reusable
         self._address = address
+
+        self.on_init = on_init
+
+        self.on_close = on_close
+        self.on_send = on_send
+        self.on_receive = on_receive
 
         self._closed = False
 
         self._connections_count = 1
+
+        if self.on_init:
+            self.on_init(self)
+        # end if
     # end __init__
 
     @property
@@ -212,10 +231,16 @@ class Socket:
         :return: The received message from the server.
         """
 
-        return self.protocol.send(
+        output = self.protocol.send(
             connection=connection or self.connection,
             data=data, address=address or self.address
         )
+
+        if self.on_send:
+            self.on_send(self, *output)
+        # end if
+
+        return output
     # end send
 
     def receive(
@@ -241,11 +266,18 @@ class Socket:
             self._address = new_address
         # end if
 
+        if self.on_receive:
+            self.on_receive(self, data, new_address)
+        # end if
+
         return data, new_address
     # end receive
 
     def close(self) -> None:
         """Closes the connection."""
+
+        if self.closed:
+            return
 
         self.connection.close()
 
@@ -256,6 +288,10 @@ class Socket:
             self.connection = None
 
             self._closed = True
+        # end if
+
+        if self.on_close:
+            self.on_close(self)
         # end if
     # end close
 

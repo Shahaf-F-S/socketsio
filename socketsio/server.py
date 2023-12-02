@@ -16,7 +16,7 @@ __all__ = [
 
 Connection = socket.socket
 Address = tuple[str, int]
-Action = Callable[[Socket], Any]
+Action = Callable[["Server", Socket], Any]
 Output = tuple[bytes, Address | None]
 
 class ServerSideClient(Socket):
@@ -26,7 +26,11 @@ class ServerSideClient(Socket):
             self,
             protocol: BaseProtocol,
             connection: Connection = None,
-            address: Address = None
+            address: Address = None,
+            on_init: Callable[[Self], Any] = None,
+            on_send: Callable[[Self, bytes, Address | None], Any] = None,
+            on_receive: Callable[[Self, bytes, Address | None], Any] = None,
+            on_close: Callable[[Self], Any] = None
     ) -> None:
         """
         Defines the attributes of a server.
@@ -40,10 +44,19 @@ class ServerSideClient(Socket):
             protocol=protocol,
             connection=connection,
             address=address,
+            on_send=on_send,
+            on_receive=on_receive,
+            on_close=on_close,
             reusable=False
         )
 
         self._connected = self.connection is not None
+
+        self.on_init = on_init
+
+        if self.on_init:
+            self.on_init(self)
+        # end if
     # end __init__
 
     @property
@@ -60,7 +73,7 @@ class ServerSideClient(Socket):
     def close(self) -> None:
         """Closes the connection."""
 
-        if not self.connected or not self.connection:
+        if self.closed or not self.connected or not self.connection:
             return
         # end if
 
@@ -71,6 +84,11 @@ class ServerSideClient(Socket):
         # end if
 
         self._connected = False
+        self._closed = True
+
+        if self.on_close:
+            self.on_close(self)
+        # end if
     # end close
 
     def make_reusable(self) -> None:
@@ -109,6 +127,16 @@ class Server(Socket):
             address: Address = None,
             reusable: bool = False,
             sequential: bool = True,
+            clients: dict[Address, ServerSideClient] = None,
+            on_init: Callable[[Self], Any] = None,
+            on_bind: Callable[[Self], Any] = None,
+            on_listen: Callable[[Self], Any] = None,
+            on_accept: Callable[[Self, Socket], Any] = None,
+            on_send: Callable[[Self, bytes, Address | None], Any] = None,
+            on_receive: Callable[[Self, bytes, Address | None], Any] = None,
+            on_close: Callable[[Self], Any] = None,
+            on_client_init: Callable[[ServerSideClient], Any] = None,
+            on_client_close: Callable[[ServerSideClient], Any] = None
     ) -> None:
         """
         Defines the attributes of a server.
@@ -118,18 +146,42 @@ class Server(Socket):
         :param sequential: The value to sequentially find clients.
         :param address: The address to save for the socket.
         :param reusable: The value to make the socket reusable.
+        :param clients: The clients container of the server.
+        :param on_init: A callback to run on init.
+        :param on_bind: A callback to run on bind.
+        :param on_listen: A callback to run on listen.
+        :param on_accept: A callback to run on accept.
+        :param on_close: A callback to run on close.
+        :param on_client_init: A callback to run on init.
+        :param on_client_close: A callback to run on close.
         """
 
         if sequential is None:
             sequential = False
         # end if
 
+        if clients is None:
+            clients = {}
+        # end if
+
         super().__init__(
             connection=connection,
             protocol=protocol or BaseProtocol.protocol(),
             address=address,
-            reusable=reusable
+            reusable=reusable,
+            on_init=on_init,
+            on_close=on_close,
+            on_send=on_send,
+            on_receive=on_receive
         )
+
+        self.clients = clients
+
+        self.on_listen = on_listen
+        self.on_bind = on_bind
+        self.on_accept = on_accept
+        self.on_client_init = on_client_init
+        self.on_client_close = on_client_close
 
         self._listening = False
         self._bound = False
@@ -251,6 +303,26 @@ class Server(Socket):
         return self.connection.accept()
     # end accept
 
+    def _accept(self) -> tuple[socket.socket, Address]:
+        """
+        Returns the connection and address from the accepted client.
+
+        :return: The sockets object and the address.
+        """
+
+        self.validate_listening()
+
+        try:
+            return self.connection.accept()
+
+        except OSError as e:
+            if self.closed:
+                return self.protocol.socket(), ("", 0)
+
+            raise e
+        # end try
+    # end _accept
+
     def _action_parameters(self, protocol: BaseProtocol = None) -> ServerSideClient:
         """
         Returns the parameters to call the action function.
@@ -264,13 +336,17 @@ class Server(Socket):
             connection, address = self.connection, None
 
         else:
-            connection, address = self.accept()
+            connection, address = self._accept()
         # end if
 
         return ServerSideClient(
             connection=connection,
             protocol=protocol,
-            address=address
+            address=address,
+            on_init=self.on_client_init,
+            on_close=self.on_client_close,
+            on_send=self.on_send,
+            on_receive=self.on_receive
         )
     # end _action_parameters
 
@@ -334,13 +410,45 @@ class Server(Socket):
         )
     # end receive
 
+    def close_clients(self) -> None:
+        """Closes the connection."""
+
+        for client in self.clients.values():
+            client.close()
+        # end for
+    # end close_clients
+
+    def clear_clients(self) -> None:
+        """Closes the connection."""
+
+        self.clients.clear()
+    # end close_clients
+
+    def close_clear_clients(self) -> None:
+        """Closes the connection."""
+
+        self.close_clients()
+        self.clear_clients()
+    # end close_clients
+
     def close(self) -> None:
         """Closes the connection."""
+
+        self.close_clients()
+
+        saved_on_close = self.on_close
+        self.on_close = None
 
         super().close()
 
         self._listening = False
         self._bound = False
+
+        self.on_close = saved_on_close
+
+        if self.on_close:
+            self.on_close(self)
+        # end if
     # end close
 
     def action(self, client: Socket) -> None:
@@ -384,14 +492,24 @@ class Server(Socket):
         sequential = self.sequential
 
         if sequential:
-            parameters = self._action_parameters(protocol=protocol)
+            client = self._action_parameters(protocol=protocol)
 
-            threading.Thread(target=lambda: action(parameters)).start()
+            if self.closed:
+                return
+            # end if
+
+            self.clients[client.address] = client
+
+            threading.Thread(target=lambda: action(self, client)).start()
 
         else:
             threading.Thread(
-                target=lambda: action(
-                    self._action_parameters(protocol=protocol)
+                target=lambda: (
+                    (c := self._action_parameters(protocol=protocol)),
+                    (
+                        action(self, c),
+                        self.clients.__setitem__(c.address, c)
+                    ) if not self.closed else None
                 )
             ).start()
         # end if

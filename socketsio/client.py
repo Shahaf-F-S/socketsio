@@ -1,6 +1,6 @@
 # client.py
 
-from typing import Self
+from typing import Self, Callable, Any
 import socket
 
 from socketsio.protocols import BaseProtocol
@@ -22,7 +22,12 @@ class Client(Socket):
             protocol: BaseProtocol = None,
             connection: Connection = None,
             address: Address = None,
-            reusable: bool = False
+            reusable: bool = False,
+            on_init: Callable[[Self], Any] = None,
+            on_connect: Callable[[Self], Any] = None,
+            on_send: Callable[[Self, bytes, Address | None], Any] = None,
+            on_receive: Callable[[Self, bytes, Address | None], Any] = None,
+            on_close: Callable[[Self], Any] = None,
     ) -> None:
         """
         Defines the attributes of a server.
@@ -31,14 +36,23 @@ class Client(Socket):
         :param protocol: The communication protocol object.
         :param address: The address to save for the socket.
         :param reusable: The value to make the socket reusable.
+        :param on_init: A callback to run on init.
+        :param on_connect: A callback to run on connect.
+        :param on_close: A callback to run on close.
         """
 
         super().__init__(
             connection=connection,
             protocol=protocol or BaseProtocol.protocol(),
             address=address,
-            reusable=reusable
+            reusable=reusable,
+            on_init=on_init,
+            on_close=on_close,
+            on_send=on_send,
+            on_receive=on_receive
         )
+
+        self.on_connect = on_connect
 
         self._connected = False
     # end __init__
@@ -91,6 +105,10 @@ class Client(Socket):
         self._address = address
 
         self._connected = True
+
+        if self.on_connect:
+            self.on_connect(self)
+        # end if
     # end connect
 
     def preconnect(self, address: Address) -> None:
@@ -176,9 +194,18 @@ class Client(Socket):
     def close(self) -> None:
         """Closes the connection."""
 
+        saved_on_close = self.on_close
+        self.on_close = None
+
         super().close()
 
         self._connected = False
+
+        self.on_close = saved_on_close
+
+        if self.on_close:
+            self.on_close(self)
+        # end if
     # end close
 
     def clone(self) -> Self:

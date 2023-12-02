@@ -14,6 +14,8 @@ __all__ = [
     "BufferedProtocol",
     "BaseProtocol",
     "EmptyProtocol",
+    "WrapperProtocol",
+    "IdentityWrapperProtocol",
     "TCP",
     "UDP",
     "BCP",
@@ -90,6 +92,7 @@ ProtocolConstructor = Callable[[], "BaseProtocol"] | "BaseProtocol"
 class BaseProtocol(metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
 
+    NAME: str = None
     DEFAULT: ProtocolConstructor = None
 
     @classmethod
@@ -235,6 +238,8 @@ class EmptyProtocol(BaseProtocol, metaclass=ABCMeta):
 class TCP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
 
+    NAME = "Transmission Control Protocol"
+
     @staticmethod
     def socket() -> Connection:
         """
@@ -289,6 +294,8 @@ class TCP(BufferedProtocol):
 
 class UDP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
+
+    NAME = "User Datagram Protocol"
 
     @staticmethod
     def socket() -> Connection:
@@ -346,19 +353,17 @@ class UDP(BufferedProtocol):
     # end receive
 # end UDP
 
-class BHP(BaseProtocol):
+class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
 
-    HEADER = 32
-
-    def __init__(self, protocol: TCP = None) -> None:
+    def __init__(self, protocol: BaseProtocol) -> None:
         """
         Defines the base protocol.
 
         :param protocol: The base protocol object to use.
         """
 
-        self.protocol = protocol or TCP()
+        self.protocol = protocol
     # end __init__
 
     def socket(self) -> Connection:
@@ -370,6 +375,112 @@ class BHP(BaseProtocol):
 
         return self.protocol.socket()
     # end socket
+
+    @abstractmethod
+    def send(
+            self,
+            connection: Connection,
+            data: bytes,
+            address: Address = None
+    ) -> Output:
+        """
+        Sends a message to the client or server by its connection.
+
+        :param data: The message to send to the client.
+        :param connection: The sockets' connection object.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+    # end send
+
+    @abstractmethod
+    def receive(
+            self,
+            connection: Connection,
+            buffer: int = None,
+            address: Address = None
+    ) -> Output:
+        """
+        Receive a message from the client or server by its connection.
+
+        :param connection: The sockets' connection object.
+        :param buffer: The buffer size to collect.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+    # end receive
+# end ProtocolWrapper
+
+class IdentityWrapperProtocol(WrapperProtocol):
+    """Defines the basic parameters for the communication."""
+
+    NAME = "Identity Wrapper Protocol"
+
+    def send(
+            self,
+            connection: Connection,
+            data: bytes,
+            address: Address = None
+    ) -> Output:
+        """
+        Sends a message to the client or server by its connection.
+
+        :param data: The message to send to the client.
+        :param connection: The sockets' connection object.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+
+        return self.protocol.send(
+            connection=connection,
+            data=data,
+            address=address
+        )
+    # end send
+
+    def receive(
+            self,
+            connection: Connection,
+            buffer: int = None,
+            address: Address = None
+    ) -> Output:
+        """
+        Receive a message from the client or server by its connection.
+
+        :param connection: The sockets' connection object.
+        :param buffer: The buffer size to collect.
+        :param address: The address of the sender.
+
+        :return: The received message from the server.
+        """
+
+        return self.protocol.receive(
+            connection=connection,
+            buffer=buffer,
+            address=address
+        )
+    # end receive
+# end IdentityWrapperProtocol
+
+class BHP(WrapperProtocol):
+    """Defines the basic parameters for the communication."""
+
+    NAME = "Buffer Header Protocol"
+
+    HEADER = 32
+
+    def __init__(self, protocol: TCP = None) -> None:
+        """
+        Defines the base protocol.
+
+        :param protocol: The base protocol object to use.
+        """
+
+        super().__init__(protocol=protocol or TCP())
+    # end __init__
 
     def send(
             self,
@@ -444,7 +555,9 @@ class BHP(BaseProtocol):
 class BCP(BHP):
     """Defines the basic parameters for the communication."""
 
-    def __init__(self, protocol: TCP, buffer: int = None) -> None:
+    NAME = "Buffer Chunks Protocol"
+
+    def __init__(self, protocol: TCP = None, buffer: int = None) -> None:
         """
         Defines the base protocol.
 
