@@ -22,7 +22,7 @@ def main() -> None:
         ],
         requirements="requirements.txt",
         name='pysocketsio',
-        version='2.0.1',
+        version='2.0.2',
         description=(
             "This module provides a wrapper for the built-in "
             "socket module in python. The program provides server and. "

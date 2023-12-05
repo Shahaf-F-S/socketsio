@@ -6,10 +6,6 @@ from abc import ABCMeta, abstractmethod
 
 from represent import represent
 
-Connection = socket.socket
-Address = tuple[str, int]
-Output = tuple[bytes, Address | None]
-
 __all__ = [
     "BufferedProtocol",
     "BaseProtocol",
@@ -31,6 +27,10 @@ __all__ = [
     "set_default_protocol",
     "reset_default_protocol"
 ]
+
+Connection = socket.socket
+Address = tuple[str, int]
+Output = tuple[bytes, Address | None]
 
 def tcp_socket() -> Connection:
     """
@@ -498,10 +498,7 @@ class BHP(WrapperProtocol):
         :return: The received message from the server.
         """
 
-        length_message = str(len(data))
-        padding = "0" * (self.HEADER - len(length_message))
-
-        data = (padding + length_message).encode() + data
+        data = str(len(data)).rjust(self.HEADER, "0").encode() + data
 
         return self.protocol.send(
             connection=connection,
@@ -741,10 +738,10 @@ def set_default_protocol(constructor: ProtocolConstructor) -> None:
     """
 
     BaseProtocol.DEFAULT = constructor
-# end default_protocol
+# end set_default_protocol
 
 def reset_default_protocol() -> None:
     """Resets protocol object."""
 
     BaseProtocol.DEFAULT = None
-# end default_protocol
+# end reset_default_protocol
