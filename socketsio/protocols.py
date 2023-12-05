@@ -120,6 +120,116 @@ class BaseProtocol(metaclass=ABCMeta):
         """
     # end socket
 
+    def protocols_chain(self) -> list["BaseProtocol"]:
+        """
+        Returns a chain of protocol objects.
+
+        :return: The list of protocols.
+        """
+
+        return [self]
+    # end protocols_chain
+
+    def protocol_types_chain(self) -> list[type["BaseProtocol"]]:
+        """
+        Returns a chain of protocol objects.
+
+        :return: The list of protocols.
+        """
+
+        return [type(protocol) for protocol in self.protocols_chain()]
+    # end protocol_types_chain
+
+    def is_tcp(self) -> bool:
+        """
+        Checks if the socket is a TCP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, TCP)
+    # end is_tcp
+
+    def is_udp(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, UDP)
+    # end is_udp
+
+    def is_bcp(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, BCP)
+    # end is_bcp
+
+    def is_bhp(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, BHP)
+    # end is_bhp
+
+    def is_tcp_based(self) -> bool:
+        """
+        Checks if the socket is a TCP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, TCP)
+    # end is_tcp_based
+
+    def is_udp_based(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, UDP)
+    # end is_udp_based
+
+    def is_bcp_based(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, BCP)
+    # end is_bcp_based
+
+    def is_bhp_based(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, BHP)
+    # end is_bhp_based
+
+    def is_wrapper_protocol(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return isinstance(self, WrapperProtocol)
+    # end is_wrapper_protocol
+
     @abstractmethod
     def send(
             self,
@@ -366,6 +476,56 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         self.protocol = protocol
     # end __init__
 
+    def is_tcp_based(self) -> bool:
+        """
+        Checks if the socket is a TCP socket.
+
+        :return: The boolean flag.
+        """
+
+        return self.protocol.is_tcp_based()
+    # end is_tcp_based
+
+    def is_udp_based(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return self.protocol.is_udp_based()
+    # end is_udp_based
+
+    def is_bcp_based(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return self.is_bcp() or self.protocol.is_bcp_based()
+    # end is_bcp_based
+
+    def is_bhp_based(self) -> bool:
+        """
+        Checks if the socket is a UDP socket.
+
+        :return: The boolean flag.
+        """
+
+        return self.is_bhp() or self.protocol.is_bhp_based()
+    # end is_bhp_based
+
+    def protocols_chain(self) -> list[BaseProtocol]:
+        """
+        Returns a chain of protocol objects.
+
+        :return: The list of protocols.
+        """
+
+        return [self, *self.protocol.protocols_chain()]
+    # end protocols_chain
+
     def socket(self) -> Connection:
         """
         Returns a new base socket object.
@@ -472,7 +632,7 @@ class BHP(WrapperProtocol):
 
     HEADER = 32
 
-    def __init__(self, protocol: TCP = None) -> None:
+    def __init__(self, protocol: TCP | WrapperProtocol = None) -> None:
         """
         Defines the base protocol.
 
@@ -554,7 +714,11 @@ class BCP(BHP):
 
     NAME = "Buffer Chunks Protocol"
 
-    def __init__(self, protocol: TCP = None, buffer: int = None) -> None:
+    def __init__(
+            self,
+            protocol: TCP | WrapperProtocol = None,
+            buffer: int = None
+    ) -> None:
         """
         Defines the base protocol.
 
