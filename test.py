@@ -19,8 +19,8 @@ def action(server: Server, client: Socket) -> None:
     """
 
     with Handler(
-            exception_handler=print,
-            cleanup_callback=client.close
+        exception_handler=print,
+        cleanup_callback=client.close
     ):
         while not (client.closed or server.closed):
             received, address = client.receive()
