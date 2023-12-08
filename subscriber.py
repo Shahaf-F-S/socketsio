@@ -3,7 +3,7 @@
 from looperator import Handler
 from socketsio import Client
 
-from socketsio.pubsub import ClientSubscriber, DataStore
+from socketsio.pubsub import ClientSubscriber, DataStore, Data
 
 
 IP = "127.0.0.1"
@@ -18,6 +18,11 @@ def main() -> None:
 
     subscriber = ClientSubscriber(socket=client, storage=storage)
     subscriber.queue_socket.run(block=False)
+
+    subscriber.authenticate({'name': 'abc', 'password': '123'})
+
+    print(Data.load(Data.decode(client.receive()[0])))
+
     subscriber.subscribe(['AAPL', "AMZN", "GOOG"])
 
     with Handler(

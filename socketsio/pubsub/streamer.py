@@ -2,6 +2,9 @@
 
 import time
 from typing import Callable, Any, Iterable
+from dataclasses import dataclass
+
+from represent import represent
 
 from looperator import Operator, Handler
 from socketsio import SocketSenderQueue, Socket
@@ -23,7 +26,9 @@ __all__ = [
     "UNSUBSCRIBE",
     "PAUSE",
     "DATA",
-    "subscribed_stored_data_sender"
+    "subscribed_stored_data_sender",
+    "Authorization",
+    "AUTHENTICATE"
 ]
 
 TIME = "time"
@@ -46,7 +51,8 @@ class StreamController:
             receiver: Callable[[], Any] = None,
             termination: Callable[[], Any] = None,
             handler: Handler = None,
-            delay: float = None
+            delay: float = None,
+            authenticated: bool = True
     ) -> None:
         """
         Defines the attributes of the object.
@@ -57,6 +63,7 @@ class StreamController:
         :param termination: The termination callback.
         :param handler: The handler object.
         :param delay: The delay value.
+        :param authenticated: The value of authentication.
         """
 
         if not isinstance(socket, SocketSenderQueue):
@@ -68,6 +75,7 @@ class StreamController:
         self._queue_socket = queue_socket
         self._delay = delay
 
+        self.authenticated = authenticated
         self.termination = termination
 
         self.sender = sender
@@ -217,6 +225,14 @@ class StreamController:
         self.stop()
         self.queue_socket.close()
 
+@represent
+@dataclass(repr=False)
+class Authorization:
+    """A class to represent an authorization object."""
+
+    authorized: bool
+    response: str = None
+
 
 Endpoint = Callable[[StreamController, Data], Any]
 
@@ -229,6 +245,8 @@ class Streamer:
             self,
             sender: Callable[[StreamController], Any] = None,
             receiver: Callable[[StreamController], Any] = None,
+            authenticate: Callable[[Data], Authorization] = None,
+            constructor: Callable[[], StreamController] | type[StreamController] = None,
             endpoints: dict[str, Endpoint] = None,
             delay: float = None,
             autorun: bool = False
@@ -238,9 +256,12 @@ class Streamer:
 
         :param sender: The data sending handler.
         :param receiver: The data receiving handler.
+        :param authenticate: The authentication handler.
         :param endpoints: The communication endpoints.
+        :param constructor: The controller constructor.
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
+        :param authenticate: The value to authenticate clients.
         """
 
         if endpoints is None:
@@ -252,6 +273,11 @@ class Streamer:
         self.endpoints = endpoints
         self.sender = sender
         self.receiver = receiver
+        self.constructor = constructor or StreamController
+        self.authenticate = authenticate or (lambda: Authorization(True))
+
+        if self.authenticate and AUTHENTICATE not in self.endpoints:
+            self.endpoints[AUTHENTICATE] = self.authentication
 
         self.clients: dict[tuple[str, int], StreamController] = {}
 
@@ -321,8 +347,42 @@ class Streamer:
         :param controller: The controller to pass to the handler.
         """
 
+        if self.authenticate and not controller.authenticated:
+            return
+
         if self.sender:
             self.sender(controller)
+
+    def authentication(self, controller: StreamController, data: Data) -> None:
+
+        authorization = self.authenticate(data)
+
+        if not authorization.authorized:
+            response = (
+                authorization.response or
+                "invalid authentication"
+            )
+
+        else:
+            response = (
+                authorization.response or
+                "authorized"
+            )
+
+        controller.authenticated = authorization.authorized
+
+        controller.queue_socket.send(
+            Data.encode(
+                Data(
+                    name=data.name,
+                    time=time.time(),
+                    data={
+                        RESPONSE: response,
+                        REQUEST: data.dump()
+                    }
+                )
+            )
+        )
 
     def receive(self, controller: StreamController) -> None:
         """
@@ -343,11 +403,19 @@ class Streamer:
 
         payload = {}
 
+        response = "invalid request"
+
         try:
             payload = Data.decode(received)
             data = Data.load(payload)
 
-            if data.name not in self.endpoints:
+            if (
+                self.authenticate and
+                (data.name != AUTHENTICATE) and
+                (not controller.authenticated)
+            ):
+                response = "unauthenticated"
+
                 raise ValueError
 
             self.endpoints[data.name](controller, data)
@@ -359,7 +427,7 @@ class Streamer:
                         name=payload.get(Data.NAME, RESPONSE),
                         time=time.time(),
                         data={
-                            RESPONSE: "invalid request",
+                            RESPONSE: response,
                             REQUEST: payload
                         }
                     )
@@ -391,9 +459,10 @@ class Streamer:
         if autorun is None:
             autorun = self.autorun
 
-        controller = StreamController(
+        controller = (self.constructor or StreamController)(
             socket=socket,
             delay=self.delay,
+            authenticated=self.authenticate is None,
             sender=lambda: self.send(controller),
             receiver=lambda: self.receive(controller),
             handler=Handler(
@@ -456,6 +525,7 @@ PAUSE = "pause"
 UNPAUSE = "unpause"
 SUBSCRIBE = "subscribe"
 UNSUBSCRIBE = "unsubscribe"
+AUTHENTICATE = "authenticate"
 
 def subscribed_stored_data_sender(
         storage: DataStore,
@@ -493,6 +563,8 @@ class SubscriptionStreamer(Streamer):
             subscriber: Callable[[], ServerSubscriber] | type[ServerSubscriber] = None,
             sender: Callable[[StreamController], Any] = None,
             receiver: Callable[[StreamController], Any] = None,
+            authenticate: Callable[[Data], Authorization] = None,
+            constructor: Callable[[], StreamController] | type[StreamController] = None,
             endpoints: dict[str, Endpoint] = None,
             storage: DataStore = None,
             delay: float = None,
@@ -504,6 +576,7 @@ class SubscriptionStreamer(Streamer):
 
         :param sender: The data sending handler.
         :param receiver: The data receiving handler.
+        :param authenticate: The authentication handler.
         :param endpoints: The communication endpoints.
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
@@ -531,6 +604,8 @@ class SubscriptionStreamer(Streamer):
                     name=self.data_name
                 )
             ),
+            constructor=constructor,
+            authenticate=authenticate,
             receiver=receiver,
             delay=delay,
             autorun=autorun,

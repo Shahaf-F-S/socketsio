@@ -1,19 +1,52 @@
 # data.py
 
 import json
-from typing import Any, Self, ClassVar
+from typing import Any, Self, ClassVar, Iterable
 from dataclasses import dataclass
 
 from represent import represent
 
 
 __all__ = [
-    "Data"
+    "Data",
+    "chain_names",
+    "unchain_names"
 ]
 
+def chain_names(names: Iterable[str], separator: str = ".") -> str:
+    """
+    Chains togather names with a separator to fore one name.
 
-@dataclass(repr=False)
+    :param names: The names to join.
+    :param separator: The separator to join names with.
+
+    :return: The chained names.
+    """
+
+    chain = separator.join(names)
+
+    if chain.count(separator) >= len(list(names)):
+        raise ValueError(
+            f"Separator must not appear in any "
+            f"of the given names: {', '.join(names)}"
+        )
+
+    return chain
+
+def unchain_names(chain: str, separator: str = ".") -> list[str]:
+    """
+    Unchains the given chain of names.
+
+    :param chain: The chained names.
+    :param separator: The separator to split the chain with.
+
+    :return: The names in the chain.
+    """
+
+    return chain.split(separator)
+
 @represent
+@dataclass(repr=False)
 class Data:
     """A class to represent a data container message."""
 

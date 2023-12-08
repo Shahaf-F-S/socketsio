@@ -1,13 +1,15 @@
 # subscriber.py
 
 import time
-from typing import Iterable
+from typing import Iterable, Any
 
 from socketsio import SocketSenderQueue, Socket
 
 from socketsio.pubsub.store import DataStore
 from socketsio.pubsub.data import Data
-from socketsio.pubsub.streamer import PAUSE, UNPAUSE, SUBSCRIBE, UNSUBSCRIBE
+from socketsio.pubsub.streamer import (
+    PAUSE, UNPAUSE, SUBSCRIBE, UNSUBSCRIBE, AUTHENTICATE
+)
 
 
 __all__ = [
@@ -89,6 +91,18 @@ class ClientSubscriber:
         return self._events.copy()
 
     @staticmethod
+    def authentication_message(data: Any) -> bytes:
+        """
+        Returns the authentication message to the given events.
+
+        :param data: The events to subscribe to.
+
+        :return: The bytes stream of the message.
+        """
+
+        return Data.encode(Data(name=AUTHENTICATE, time=time.time(), data=data))
+
+    @staticmethod
     def subscribe_message(events: Iterable[str]) -> bytes:
         """
         Returns the subscribes message to the given events.
@@ -131,6 +145,15 @@ class ClientSubscriber:
         """
 
         return Data.encode(Data(name=UNPAUSE, time=time.time()))
+
+    def authenticate(self, data: Any) -> None:
+        """
+        Sends an authentication request.
+
+        :param data: The authentication data.
+        """
+
+        self.queue_socket.send(self.authentication_message(data=data))
 
     def subscribe(self, events: Iterable[str]) -> None:
         """

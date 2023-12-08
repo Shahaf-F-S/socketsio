@@ -6,13 +6,17 @@ import random
 from looperator import Operator
 from socketsio import Server
 
-from socketsio.pubsub import DataStore, Data, SubscriptionStreamer
+from socketsio.pubsub import DataStore, Data, SubscriptionStreamer, Authorization
 
 
 IP = "127.0.0.1"
 PORT = 5080
 
 DELAY = 0.00001
+
+AUTHORIZED = [
+    {'name': 'abc', 'password': '123'}
+]
 
 class Producer:
 
@@ -44,7 +48,10 @@ def main() -> None:
         delay=DELAY
     )
 
-    streamer = SubscriptionStreamer(storage=storage)
+    streamer = SubscriptionStreamer(
+        storage=storage,
+        authenticate=lambda data: Authorization(data.data in AUTHORIZED)
+    )
 
     server = Server()
     server.bind((IP, PORT))
