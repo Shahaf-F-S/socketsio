@@ -59,7 +59,7 @@ def main() -> None:
     service = Operator(
         operation=lambda: server.handle(
             action=lambda _, socket: (
-                print(f"client connection: {socket.address}"),
+                print(f"client connected: {socket.address}"),
                 streamer.controller(
                     socket=socket,
                     exception_handler=print

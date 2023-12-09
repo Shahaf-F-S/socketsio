@@ -131,7 +131,7 @@ class Server(Socket):
             on_init: Callable[[Self], Any] = None,
             on_bind: Callable[[Self], Any] = None,
             on_listen: Callable[[Self], Any] = None,
-            on_accept: Callable[[Self, Socket], Any] = None,
+            on_accept: Callable[[Self, tuple[socket.socket, Address]], Any] = None,
             on_send: Callable[[Self, bytes, Address | None], Any] = None,
             on_receive: Callable[[Self, bytes, Address | None], Any] = None,
             on_close: Callable[[Self], Any] = None,
@@ -300,7 +300,12 @@ class Server(Socket):
 
         self.validate_listening()
 
-        return self.connection.accept()
+        data = self.connection.accept()
+
+        if self.on_accept:
+            self.on_accept(*data)
+
+        return data
     # end accept
 
     def _accept(self) -> tuple[socket.socket, Address]:
@@ -313,7 +318,12 @@ class Server(Socket):
         self.validate_listening()
 
         try:
-            return self.connection.accept()
+            data = self.connection.accept()
+
+            if self.on_accept:
+                self.on_accept(*data)
+
+            return data
 
         except OSError as e:
             if self.closed:

@@ -28,7 +28,10 @@ __all__ = [
     "DATA",
     "subscribed_stored_data_sender",
     "Authorization",
-    "AUTHENTICATE"
+    "AUTHENTICATE",
+    "default_subscription_streamer_endpoints",
+    "default_streamer_endpoints",
+    "CLOSE"
 ]
 
 TIME = "time"
@@ -243,10 +246,14 @@ class Streamer:
 
     def __init__(
             self,
+            constructor: Callable[[], StreamController] | type[StreamController] = None,
             sender: Callable[[StreamController], Any] = None,
             receiver: Callable[[StreamController], Any] = None,
             authenticate: Callable[[Data], Authorization] = None,
-            constructor: Callable[[], StreamController] | type[StreamController] = None,
+            on_join: Callable[[StreamController], Any] = None,
+            on_authorized: Callable[[StreamController, Data], Any] = None,
+            on_unauthorized: Callable[[StreamController, Data], Any] = None,
+            on_leave: Callable[[StreamController, Data], Any] = None,
             endpoints: dict[str, Endpoint] = None,
             delay: float = None,
             autorun: bool = False
@@ -259,6 +266,10 @@ class Streamer:
         :param authenticate: The authentication handler.
         :param endpoints: The communication endpoints.
         :param constructor: The controller constructor.
+        :param on_join: The callback to run for client join.
+        :param on_authorized: The callback to run for client authorized.
+        :param on_unauthorized: The callback to run on client unauthorized.
+        :param on_leave: The callback to run on client leave.
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
         :param authenticate: The value to authenticate clients.
@@ -273,6 +284,10 @@ class Streamer:
         self.endpoints = endpoints
         self.sender = sender
         self.receiver = receiver
+        self.on_leave = on_leave
+        self.on_unauthorized = on_unauthorized
+        self.on_authorized = on_authorized
+        self.on_join = on_join
         self.constructor = constructor or StreamController
         self.authenticate = authenticate or (lambda: Authorization(True))
 
@@ -384,6 +399,12 @@ class Streamer:
             )
         )
 
+        if self.on_authorized and authorization.authorized:
+            self.on_authorized(controller, data)
+
+        if self.on_unauthorized and not authorization.authorized:
+            self.on_unauthorized(controller, data)
+
     def receive(self, controller: StreamController) -> None:
         """
         Runs the receiving handler.
@@ -476,6 +497,9 @@ class Streamer:
 
         self.clients[socket.address] = controller
 
+        if self.on_join:
+            self.on_join(controller)
+
         if autorun:
             controller.run(block=block, send=send, receive=receive)
 
@@ -526,6 +550,7 @@ UNPAUSE = "unpause"
 SUBSCRIBE = "subscribe"
 UNSUBSCRIBE = "unsubscribe"
 AUTHENTICATE = "authenticate"
+CLOSE = "close"
 
 def subscribed_stored_data_sender(
         storage: DataStore,
@@ -561,10 +586,14 @@ class SubscriptionStreamer(Streamer):
     def __init__(
             self,
             subscriber: Callable[[], ServerSubscriber] | type[ServerSubscriber] = None,
+            constructor: Callable[[], StreamController] | type[StreamController] = None,
             sender: Callable[[StreamController], Any] = None,
             receiver: Callable[[StreamController], Any] = None,
             authenticate: Callable[[Data], Authorization] = None,
-            constructor: Callable[[], StreamController] | type[StreamController] = None,
+            on_join: Callable[[StreamController], Any] = None,
+            on_authorized: Callable[[StreamController, Data], Any] = None,
+            on_unauthorized: Callable[[StreamController, Data], Any] = None,
+            on_leave: Callable[[StreamController, Data], Any] = None,
             endpoints: dict[str, Endpoint] = None,
             storage: DataStore = None,
             delay: float = None,
@@ -578,6 +607,10 @@ class SubscriptionStreamer(Streamer):
         :param receiver: The data receiving handler.
         :param authenticate: The authentication handler.
         :param endpoints: The communication endpoints.
+        :param on_join: The callback to run for client join.
+        :param on_authorized: The callback to run for client authorized.
+        :param on_unauthorized: The callback to run on client unauthorized.
+        :param on_leave: The callback to run on client leave.
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
         :param subscriber: The subscriber base class.
@@ -609,19 +642,12 @@ class SubscriptionStreamer(Streamer):
             receiver=receiver,
             delay=delay,
             autorun=autorun,
+            on_join=on_join,
+            on_authorized=on_authorized,
+            on_unauthorized=on_unauthorized,
+            on_leave=on_leave,
             endpoints={
-                PAUSE: lambda controller, _: (
-                    controller.sender.pause()
-                ),
-                UNPAUSE: lambda controller, _: (
-                    controller.sender.unpause()
-                ),
-                SUBSCRIBE: lambda controller, data: (
-                    self.subscribers[controller].subscribe(data.data)
-                ),
-                UNSUBSCRIBE: lambda controller, data: (
-                    self.subscribers[controller].unsubscribe(data.data)
-                ),
+                **default_subscription_streamer_endpoints(self),
                 **(endpoints or {})
             }
         )
@@ -668,3 +694,52 @@ class SubscriptionStreamer(Streamer):
             controller.run(block=block, send=send, receive=receive)
 
         return controller
+
+
+def default_streamer_endpoints(
+        streamer: SubscriptionStreamer
+) -> dict[str, Callable[[StreamController, Data], Any]]:
+    """
+    Creates the default streamer endpoints.
+
+    :param streamer: The streamer object.
+
+    :return: The dictionary of the endpoint names and endpoint callbacks.
+    """
+
+    return {
+        AUTHENTICATE: streamer.authentication,
+        CLOSE: lambda controller, data: (
+            controller.close(),
+            streamer.subscribers.pop(controller, None),
+            (streamer.on_leave(controller, data) if streamer.on_leave else None)
+        )
+    }
+
+
+def default_subscription_streamer_endpoints(
+        streamer: SubscriptionStreamer
+) -> dict[str, Callable[[StreamController, Data], Any]]:
+    """
+    Creates the default subscription streamer endpoints.
+
+    :param streamer: The streamer object.
+
+    :return: The dictionary of the endpoint names and endpoint callbacks.
+    """
+
+    return {
+        **default_streamer_endpoints(streamer),
+        PAUSE: lambda controller, _: (
+            controller.sender.pause()
+        ),
+        UNPAUSE: lambda controller, _: (
+            controller.sender.unpause()
+        ),
+        SUBSCRIBE: lambda controller, data: (
+            streamer.subscribers[controller].subscribe(data.data)
+        ),
+        UNSUBSCRIBE: lambda controller, data: (
+            streamer.subscribers[controller].unsubscribe(data.data)
+        )
+    }
