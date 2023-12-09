@@ -5,7 +5,6 @@ from socketsio import Client
 
 from socketsio.pubsub import ClientSubscriber, DataStore, Data
 
-
 IP = "127.0.0.1"
 PORT = 5080
 
@@ -31,7 +30,6 @@ def main() -> None:
     ):
         while True:
             print(subscriber.data())
-
 
 if __name__ == "__main__":
     main()

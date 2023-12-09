@@ -56,8 +56,6 @@ class ServerSideClient(Socket):
 
         if self.on_init:
             self.on_init(self)
-        # end if
-    # end __init__
 
     @property
     def connected(self) -> bool:
@@ -68,49 +66,39 @@ class ServerSideClient(Socket):
         """
 
         return self._connected
-    # end connected
 
     def close(self) -> None:
         """Closes the connection."""
 
         if self.closed or not self.connected or not self.connection:
             return
-        # end if
 
         if not self.is_udp():
             self.connection.close()
 
             self.connection = None
-        # end if
 
         self._connected = False
         self._closed = True
 
         if self.on_close:
             self.on_close(self)
-        # end if
-    # end close
 
     def make_reusable(self) -> None:
         """Makes the socket reusable."""
 
         self._reusable = True
-    # end make_reusable
 
     def make_unreusable(self) -> None:
         """Makes the socket unreusable."""
 
         self._reusable = False
-    # end make_unreusable
 
     def validate_connection(self) -> None:
         """Validates a connection."""
 
         if not self.connected or not self.connection:
             raise ValueError("The socket is already closed.")
-        # end if
-    # end validate_connection
-# end ServerSideClient
 
 class Server(Socket):
     """A class to represent the server object."""
@@ -158,11 +146,9 @@ class Server(Socket):
 
         if sequential is None:
             sequential = False
-        # end if
 
         if clients is None:
             clients = {}
-        # end if
 
         super().__init__(
             connection=connection,
@@ -187,7 +173,6 @@ class Server(Socket):
         self._bound = False
 
         self.sequential = sequential
-    # end __init__
 
     @property
     def listening(self) -> bool:
@@ -198,7 +183,6 @@ class Server(Socket):
         """
 
         return self._listening
-    # end listening
 
     @property
     def bound(self) -> bool:
@@ -209,7 +193,6 @@ class Server(Socket):
         """
 
         return self._bound
-    # end bound
 
     @property
     def prebound(self) -> bool:
@@ -220,19 +203,16 @@ class Server(Socket):
         """
 
         return self._address is not None
-    # end prebound
 
     def make_reusable(self) -> None:
         """Makes the socket reusable."""
 
         self._reusable = True
-    # end make_reusable
 
     def make_unreusable(self) -> None:
         """Makes the socket unreusable."""
 
         self._reusable = False
-    # end make_unreusable
 
     def bind(self, address: Address) -> None:
         """
@@ -248,7 +228,6 @@ class Server(Socket):
         self._address = address
 
         self._bound = True
-    # end bind
 
     def prebind(self, address: Address) -> None:
         """
@@ -258,13 +237,11 @@ class Server(Socket):
         """
 
         self._address = address
-    # end bind
 
     def rebind(self) -> None:
         """Binds the connection of the server."""
 
         self.bind(self._address)
-    # end bind
 
     def validate_binding(self) -> None:
         """Validates the binding of the socket."""
@@ -279,17 +256,12 @@ class Server(Socket):
                 raise ValueError(
                     "Cannot start listening before binding."
                 )
-            # end if
-        # end if
-    # end validate_binding
 
     def validate_listening(self) -> None:
         """Validates the binding of the socket."""
 
         if not self.listening and not self.is_udp():
             self.listen()
-        # end if
-    # end validate_binding
 
     def accept(self) -> tuple[socket.socket, Address]:
         """
@@ -306,7 +278,6 @@ class Server(Socket):
             self.on_accept(*data)
 
         return data
-    # end accept
 
     def _accept(self) -> tuple[socket.socket, Address]:
         """
@@ -328,11 +299,8 @@ class Server(Socket):
         except OSError as e:
             if self.closed:
                 return self.protocol.socket(), ("", 0)
-            # end if
 
             raise e
-        # end try
-    # end _accept
 
     def _action_parameters(self, protocol: BaseProtocol = None) -> ServerSideClient:
         """
@@ -348,7 +316,6 @@ class Server(Socket):
 
         else:
             connection, address = self._accept()
-        # end if
 
         return ServerSideClient(
             connection=connection,
@@ -359,7 +326,6 @@ class Server(Socket):
             on_send=self.on_send,
             on_receive=self.on_receive
         )
-    # end _action_parameters
 
     def send(
             self,
@@ -382,7 +348,6 @@ class Server(Socket):
                 "Cannot directly send/receive "
                 "with a non-UDP server socket."
             )
-        # end if
 
         self.validate_binding()
 
@@ -390,7 +355,6 @@ class Server(Socket):
             connection=connection or self.connection,
             data=data, address=address or self._address
         )
-    # end send
 
     def receive(
             self,
@@ -411,7 +375,6 @@ class Server(Socket):
                 "Cannot directly send/receive "
                 "with a non-UDP server socket."
             )
-        # end if
 
         self.validate_binding()
 
@@ -419,28 +382,23 @@ class Server(Socket):
             connection=connection or self.connection,
             address=address or self._address
         )
-    # end receive
 
     def close_clients(self) -> None:
         """Closes the connection."""
 
         for client in self.clients.values():
             client.close()
-        # end for
-    # end close_clients
 
     def clear_clients(self) -> None:
         """Closes the connection."""
 
         self.clients.clear()
-    # end close_clients
 
     def close_clear_clients(self) -> None:
         """Closes the connection."""
 
         self.close_clients()
         self.clear_clients()
-    # end close_clients
 
     def close(self) -> None:
         """Closes the connection."""
@@ -459,8 +417,6 @@ class Server(Socket):
 
         if self.on_close:
             self.on_close(self)
-        # end if
-    # end close
 
     def action(self, client: Socket) -> None:
         """
@@ -468,7 +424,6 @@ class Server(Socket):
 
         :param client: The client socket object.
         """
-    # end action
 
     def listen(self) -> None:
         """Listens to clients."""
@@ -478,7 +433,6 @@ class Server(Socket):
         self.connection.listen()
 
         self._listening = True
-    # end listen
 
     def handle(
             self,
@@ -498,7 +452,6 @@ class Server(Socket):
 
         if sequential is not None:
             self.sequential = sequential
-        # end if
 
         sequential = self.sequential
 
@@ -507,7 +460,6 @@ class Server(Socket):
 
             if self.closed:
                 return
-            # end if
 
             self.clients[client.address] = client
 
@@ -523,8 +475,6 @@ class Server(Socket):
                     ) if not self.closed else None
                 )
             ).start()
-        # end if
-    # end handle
 
     def clone(self) -> Self:
         """
@@ -540,5 +490,3 @@ class Server(Socket):
             reusable=self.reusable,
             sequential=self.sequential
         )
-    # end clone
-# end Server

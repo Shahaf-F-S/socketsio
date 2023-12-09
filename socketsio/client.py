@@ -55,7 +55,6 @@ class Client(Socket):
         self.on_connect = on_connect
 
         self._connected = False
-    # end __init__
 
     @property
     def connected(self) -> bool:
@@ -66,7 +65,6 @@ class Client(Socket):
         """
 
         return self._connected
-    # end connected
 
     @property
     def preconnected(self) -> bool:
@@ -77,19 +75,16 @@ class Client(Socket):
         """
 
         return self._address is not None
-    # end preconnected
 
     def make_reusable(self) -> None:
         """Makes the socket reusable."""
 
         self._reusable = True
-    # end make_reusable
 
     def make_unreusable(self) -> None:
         """Makes the socket unreusable."""
 
         self._reusable = False
-    # end make_unreusable
 
     def connect(self, address: Address) -> None:
         """
@@ -108,8 +103,6 @@ class Client(Socket):
 
         if self.on_connect:
             self.on_connect(self)
-        # end if
-    # end connect
 
     def preconnect(self, address: Address) -> None:
         """
@@ -119,13 +112,11 @@ class Client(Socket):
         """
 
         self._address = address
-    # end connect
 
     def reconnect(self) -> None:
         """Returns the connection and address from the accepted client."""
 
         self.connect(self._address)
-    # end connect
 
     def validate_connected(self) -> None:
         """Validates a connection."""
@@ -141,9 +132,6 @@ class Client(Socket):
                     "Socket address is not defined "
                     "for automatic connection."
                 )
-            # end if
-        # end if
-    # end validate_connection
 
     def send(
             self,
@@ -167,7 +155,6 @@ class Client(Socket):
             connection=connection or self.connection,
             data=data, address=address or self._address
         )
-    # end send
 
     def receive(
             self,
@@ -189,7 +176,6 @@ class Client(Socket):
             connection=connection or self.connection,
             address=address or self._address
         )
-    # end receive
 
     def close(self) -> None:
         """Closes the connection."""
@@ -205,8 +191,6 @@ class Client(Socket):
 
         if self.on_close:
             self.on_close(self)
-        # end if
-    # end close
 
     def clone(self) -> Self:
         """
@@ -221,5 +205,3 @@ class Client(Socket):
             address=self.address,
             reusable=self.reusable
         )
-    # end clone
-# end Client

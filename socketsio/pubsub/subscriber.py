@@ -11,7 +11,6 @@ from socketsio.pubsub.streamer import (
     PAUSE, UNPAUSE, SUBSCRIBE, UNSUBSCRIBE, AUTHENTICATE
 )
 
-
 __all__ = [
     "ClientSubscriber"
 ]

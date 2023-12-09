@@ -33,8 +33,6 @@ def read_file(path: str) -> str:
 
     with open(path, "r", encoding="utf-8") as file:
         return file.read()
-    # end open
-# end read_file
 
 def strip_code(source: str) -> str:
     """
@@ -62,11 +60,9 @@ def strip_code(source: str) -> str:
 
         if start_line > last_lineno:
             last_col = 0
-        # end if
 
         if start_col > last_col:
             out += (" " * (start_col - last_col))
-        # end if
 
         if token_type == tokenize.COMMENT:
             pass
@@ -78,21 +74,17 @@ def strip_code(source: str) -> str:
                 (start_col > 0)
             ):
                 out += token_string
-            # end if
 
         else:
             out += token_string
-        # end if
 
         previous_token_type = token_type
         last_col = end_col
         last_lineno = end_line
-    # end for
 
     return '\n'.join(
         line for line in out.splitlines() if line.strip()
     )
-# end strip_code
 
 def strip_code_file(path: str) -> str:
     """
@@ -104,7 +96,6 @@ def strip_code_file(path: str) -> str:
     """
 
     return strip_code(read_file(path))
-# end strip_code_file
 
 FilesCollection = dict[str, list[str]]
 
@@ -127,19 +118,16 @@ def collect_files(
 
     if excluded_names is None:
         excluded_names = ()
-    # end if
 
     base_extensions = (".",)
 
     if extensions is None:
         extensions = base_extensions
-    # end if
 
     paths = {extension: [] for extension in extensions}
 
     if levels == 0:
         return paths
-    # end if
 
     if not any(
         part in excluded_names
@@ -157,8 +145,6 @@ def collect_files(
                         ) or (extensions == base_extensions)
                     ):
                         paths[extension].append(str(path))
-                    # end if
-                # end for
 
             else:
                 new_paths = collect_files(
@@ -168,13 +154,8 @@ def collect_files(
 
                 for extension in paths:
                     paths[extension].extend(new_paths[extension])
-                # end for
-            # end if
-        # end for
-    # end if
 
     return paths
-# end collect_files
 
 class ContentFileSpecs:
     """A class for file specs."""
@@ -195,7 +176,6 @@ class ContentFileSpecs:
         self.lines_count = None
         self.words_count = None
         self.characters_count = None
-    # end __init__
 
     def process(self) -> None:
         """Processes the file data."""
@@ -205,8 +185,6 @@ class ContentFileSpecs:
         self.lines_count = len(self.content.split("\n"))
         self.words_count = len(self.content.replace("\n", "").split())
         self.characters_count = len(self.content.replace(" ", ""))
-    # end process
-# end ContentFileSpecs
 
 class CodeFileSpecs:
     """A class for file specs."""
@@ -230,7 +208,6 @@ class CodeFileSpecs:
         self.comment_lines_count = None
         self.words_count = None
         self.characters_count = None
-    # end __init__
 
     def process(self) -> None:
         """Processes the file data."""
@@ -243,8 +220,6 @@ class CodeFileSpecs:
         self.comment_lines_count = self.content_lines_count - self.code_lines_count
         self.words_count = len(self.code.replace("\n", "").split())
         self.characters_count = len(self.code.replace(" ", ""))
-    # end process
-# end CodeFileSpecs
 
 class ProjectSpecs:
     """A class for project specs."""
@@ -275,8 +250,6 @@ class ProjectSpecs:
 
         self.content_file_extensions = list(self.content_files_collection.keys())
         self.code_file_extensions = list(self.code_files_collection.keys())
-    # end __init__
-# end ProjectSpecs
 
 class ProjectTree:
     """A class to represent the project tree."""
@@ -289,8 +262,6 @@ class ProjectTree:
         """
 
         self.tree = tree
-    # end __init__
-# end ProjectTree
 
 def set_project_leaf(
         tree: dict[str, Any], branches: list[str], leaf: dict[str, Any]
@@ -307,17 +278,14 @@ def set_project_leaf(
         tree[branches[0]] = leaf
 
         return
-    # end if
 
     if branches[0] not in tree:
         tree[branches[0]] = {}
-    # end if
 
     set_project_leaf(
         tree=tree[branches[0]], branches=branches[1:],
         leaf=leaf
     )
-# end set_leaf
 
 def project_tree(
         location: str,
@@ -346,7 +314,6 @@ def project_tree(
             branches.extend(
                 Path(os.path.relpath(root, location)).parts
             )
-        # end if
 
         files_data = []
 
@@ -359,13 +326,9 @@ def project_tree(
                     any(part in excluded_extensions for part in Path(file).parts)
                 ):
                     valid = False
-                # end if
-            # end for
 
             if valid:
                 files_data.append((file, None))
-            # end if
-        # end for
 
         directories_data = [
             (d, {}) for d in dirs
@@ -378,10 +341,8 @@ def project_tree(
                 directories_data + files_data
             )
         )
-    # end for
 
     return ProjectTree(tree)
-# end project_tree
 
 class ProjectInspection:
     """A class for project inspection."""
@@ -414,7 +375,6 @@ class ProjectInspection:
         self.total_comment_lines_count = None
         self.total_content_lines_count = None
         self.total_lines_count = None
-    # end __init__
 
     def process(self) -> None:
         """Processes the project."""
@@ -433,8 +393,6 @@ class ProjectInspection:
                 ) = content_file_specs
 
                 self.content_lines_counters[extension] += content_file_specs.lines_count
-            # end for
-        # end for
 
         for extension, paths in self.specs.code_files_collection.items():
             self.code_files_collection[extension] = {}
@@ -452,8 +410,6 @@ class ProjectInspection:
 
                 self.code_lines_counters[extension] += code_file_specs.code_lines_count
                 self.comment_lines_counters[extension] += code_file_specs.comment_lines_count
-            # end for
-        # end for
 
         self.content_file_extensions = self.specs.content_file_extensions
         self.code_file_extensions = self.specs.code_file_extensions
@@ -466,8 +422,6 @@ class ProjectInspection:
             self.total_comment_lines_count +
             self.total_content_lines_count
         )
-    # end process
-# end ProjectInspection
 
 def inspect_project(
         location: str,
@@ -505,7 +459,6 @@ def inspect_project(
             excluded_names=excluded_names,
         )
     )
-# end inspect_project
 
 class ModelEncoder(json.JSONEncoder):
     """A class to represent a json encoder."""
@@ -526,12 +479,8 @@ class ModelEncoder(json.JSONEncoder):
         for key in data.copy():
             if key in self.excluded:
                 data.pop(key)
-            # end
-        # end for
 
         return data
-    # end default
-# end ModelEncoder
 
 def project_specs(
         location: str, save: bool = True,
@@ -555,13 +504,11 @@ def project_specs(
 
     if isinstance(save, bool):
         save = "specs"
-    # end if
 
     specs_path = Path(save) / Path(location).parts[-1]
 
     if not specs_path.exists():
         os.makedirs(str(specs_path), exist_ok=True)
-    # end if
 
     inspection = inspect_project(
         location=location,
@@ -577,8 +524,5 @@ def project_specs(
     if save:
         with open(str(specs_path / Path("inspection.json")), "w") as file:
             json.dump(inspection, file, cls=ModelEncoder, indent=4)
-        # end open
-    # end if
 
     return inspection
-# end project_specs

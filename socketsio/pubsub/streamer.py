@@ -12,7 +12,6 @@ from socketsio import SocketSenderQueue, Socket
 from socketsio.pubsub.data import Data
 from socketsio.pubsub.store import DataStore
 
-
 __all__ = [
     "RESPONSE",
     "REQUEST",
@@ -40,7 +39,6 @@ RESPONSE = "response"
 REQUEST = "request"
 
 ACTION = "action"
-
 
 class StreamController:
     """An object to control the stream of data from and to a client."""
@@ -235,7 +233,6 @@ class Authorization:
 
     authorized: bool
     response: str = None
-
 
 Endpoint = Callable[[StreamController, Data], Any]
 
@@ -543,7 +540,6 @@ class ServerSubscriber:
 
         self.events.difference_update(events or ())
 
-
 DATA = "data"
 PAUSE = "pause"
 UNPAUSE = "unpause"
@@ -578,7 +574,6 @@ def subscribed_stored_data_sender(
 
     if data:
         socket.send(Data.encode(Data(name=name or DATA, time=time.time(), data=data)))
-
 
 class SubscriptionStreamer(Streamer):
     """A class to represent a subscription based stream producer and handler."""
@@ -695,7 +690,6 @@ class SubscriptionStreamer(Streamer):
 
         return controller
 
-
 def default_streamer_endpoints(
         streamer: SubscriptionStreamer
 ) -> dict[str, Callable[[StreamController, Data], Any]]:
@@ -715,7 +709,6 @@ def default_streamer_endpoints(
             (streamer.on_leave(controller, data) if streamer.on_leave else None)
         )
     }
-
 
 def default_subscription_streamer_endpoints(
         streamer: SubscriptionStreamer

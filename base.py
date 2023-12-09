@@ -42,18 +42,14 @@ def root() -> str:
 
         else:
             raise KeyError
-        # end if
 
     except KeyError:
         if os.getcwd() not in (
                 path := str(Path(__file__).parent)
         ):
             path = os.getcwd()
-        # end if
-    # end try
 
     return str(path)
-# end root
 
 def source() -> str:
     """
@@ -63,7 +59,6 @@ def source() -> str:
     """
 
     return str(Path(root()) / Path("source"))
-# end source
 
 def assets() -> str:
     """
@@ -73,7 +68,6 @@ def assets() -> str:
     """
 
     return str(Path(source()) / Path("assets"))
-# end assets
 
 def dependencies() -> str:
     """
@@ -83,8 +77,6 @@ def dependencies() -> str:
     """
 
     return str(Path(source()) / Path("dependencies"))
-# end dependencies
-
 
 def terminate_thread(thread: threading.Thread) -> None:
     """
@@ -101,10 +93,8 @@ def terminate_thread(thread: threading.Thread) -> None:
         thread_id, ctypes.py_object(SystemExit)
     ) > 1:
         ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-    # end if
 
     logging.getLogger().setLevel(logging.FATAL)
-# end terminate_thread
 
 def suppress(silence: bool = True) -> contextlib.AbstractContextManager:
     """
@@ -117,12 +107,9 @@ def suppress(silence: bool = True) -> contextlib.AbstractContextManager:
 
     if not silence:
         return contextlib.nullcontext()
-    # end if
 
     with warnings.catch_warnings(record=True):
         return contextlib.redirect_stdout(None)
-    # end catch_warnings
-# end suppress
 
 def run_silent_command(command: str) -> None:
     """
@@ -132,7 +119,6 @@ def run_silent_command(command: str) -> None:
     """
 
     subprocess.run(list(command.split(" ")), capture_output=True)
-# end run_silent_command
 
 def virtualenv_interpreter_location() -> str:
     """
@@ -142,7 +128,6 @@ def virtualenv_interpreter_location() -> str:
     """
 
     return os.path.split(sys.executable)[0]
-# end activate_virtualenv_command
 
 def activate_virtualenv_command() -> str:
     """
@@ -160,7 +145,6 @@ def activate_virtualenv_command() -> str:
         f"{'' if 'win' in sys.platform else 'source '}"
         f"{python_startup}"
     )
-# end activate_virtualenv_command
 
 def validate_requirement(
         name: str,
@@ -187,7 +171,6 @@ def validate_requirement(
 
     else:
         version = ""
-    # end if
 
     try:
         importlib.import_module(name)
@@ -200,7 +183,6 @@ def validate_requirement(
 
         if quiet:
             arguments.append("--quiet")
-        # end if
 
         command = (
             f"{activate_virtualenv_command()} && "
@@ -211,20 +193,15 @@ def validate_requirement(
         if silence:
             with suppress():
                 os.system(command)
-            # end suppress
 
         else:
             os.system(command)
-        # end if
 
         try:
             importlib.import_module(name)
 
         except ImportError:
             raise ImportError(f"{name} module is not found.")
-        # end try
-    # end try
-# end validate_requirements
 
 def retrieve_name(variable: Any, level: int = 1) -> str:
     """
@@ -240,14 +217,12 @@ def retrieve_name(variable: Any, level: int = 1) -> str:
 
     for _ in range(level):
         src = src.f_back
-    # end for
 
     return [
         var_name for var_name, var_val in
         src.f_locals.items()
         if var_val is variable
     ][0]
-# end retrieve_name
 
 def documentation(module: str) -> dict[str, str]:
     """
@@ -276,7 +251,6 @@ def documentation(module: str) -> dict[str, str]:
         key: f'`{key}`\n{value.__doc__}'
         for key, value in documents.items()
     }
-# end documentation
 
 def document(obj: Any) -> None:
     """
@@ -288,4 +262,3 @@ def document(obj: Any) -> None:
     obj.__doc__ += """\n\n""".join(
         documentation(obj.__module__).values()
     )
-# end document

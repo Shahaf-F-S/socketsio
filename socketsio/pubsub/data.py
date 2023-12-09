@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from represent import represent
 
-
 __all__ = [
     "Data",
     "chain_names",

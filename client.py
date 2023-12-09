@@ -17,7 +17,6 @@ def main() -> None:
 
     else:
         raise ValueError(f"Invalid protocol type: {PROTOCOL}")
-    # end if
 
     client = Client(protocol)
     client.connect((HOST, PORT))
@@ -25,9 +24,6 @@ def main() -> None:
     for _ in range(2):
         client.send((", ".join(["hello world"] * 3)).encode())
         print("client:", client.receive())
-    # end for
-# end main
 
 if __name__ == '__main__':
     main()
-# end if

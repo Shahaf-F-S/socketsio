@@ -26,7 +26,6 @@ def generate_html(
 
     if destination is None:
         destination = "docs"
-    # end if
 
     main_index_file = Path(destination) / Path(package) / Path("index.html")
 
@@ -39,9 +38,6 @@ def generate_html(
                 ]
             )
         )
-    # end if
 
     if show:
         os.system(f'start {main_index_file}')
-    # end if
-# end generate_html

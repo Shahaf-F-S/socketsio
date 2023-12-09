@@ -21,7 +21,6 @@ def find_available_port(host: str) -> int:
     sock.bind((host, 0))
 
     return sock.getsockname()[1]
-# end find_available_port
 
 def is_used_port(host: str, port: int) -> bool:
     """
@@ -43,9 +42,5 @@ def is_used_port(host: str, port: int) -> bool:
 
             else:
                 raise e
-            # end if
-        # end try
-    # end socket
 
     return False
-# end is_used_port

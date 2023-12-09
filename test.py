@@ -27,7 +27,6 @@ def action(server: Server, client: Socket) -> None:
 
             if not received:
                 continue
-            # end if
 
             print("server:", (received, address))
 
@@ -37,9 +36,6 @@ def action(server: Server, client: Socket) -> None:
             )
 
             client.send(sent)
-        # end while
-    # end handler
-# end action
 
 HOST = "127.0.0.1"
 PROTOCOL = 'TCP'
@@ -56,7 +52,6 @@ def main() -> None:
 
     else:
         raise ValueError(f"Invalid protocol type: {PROTOCOL}")
-    # end if
 
     server = Server(protocol)
     server.bind((HOST, PORT))
@@ -70,9 +65,6 @@ def main() -> None:
     for _ in range(2):
         client.send((", ".join(["hello world"] * 3)).encode())
         print("client:", client.receive())
-    # end for
-# end main
 
 if __name__ == '__main__':
     main()
-# end if

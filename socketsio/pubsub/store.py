@@ -5,11 +5,9 @@ from typing import Iterable, Self
 
 from socketsio.pubsub.data import Data
 
-
 __all__ = [
     "DataStore"
 ]
-
 
 class DataStore:
     """A class to contain data lists by keys."""

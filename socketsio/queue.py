@@ -61,7 +61,6 @@ class SocketSenderQueue(Operator):
             wait=wait,
             timeout=timeout
         )
-    # end __init__
 
     def send_queue(self) -> None:
         """Sends the message from the queue"""
@@ -72,21 +71,15 @@ class SocketSenderQueue(Operator):
 
                 if data[0]:
                     self.socket.send(*data)
-                # end if
 
             except IndexError:
                 pass
-            # end try
-        # end if
-    # end send_queue
 
     def send_all_queue(self) -> None:
         """Sends the message from the queue"""
 
         while self.queue:
             self.send_queue()
-        # end while
-    # end send_all_queue
 
     def receive(self, address: Address = None) -> tuple[bytes, Address | None]:
         """
@@ -98,7 +91,6 @@ class SocketSenderQueue(Operator):
         """
 
         return self.socket.receive(address)
-    # end receive
 
     def send(self, data: bytes, address: Address = None) -> tuple[bytes, Address | None]:
         """
@@ -113,7 +105,6 @@ class SocketSenderQueue(Operator):
         self.queue.append((data, address))
 
         return data, address
-    # end send
 
     def close(self) -> None:
         """Closes the connection."""
@@ -121,5 +112,3 @@ class SocketSenderQueue(Operator):
         self.stop()
 
         self.socket.close()
-    # end close
-# end SocketQueue

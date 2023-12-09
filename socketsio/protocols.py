@@ -43,7 +43,6 @@ def tcp_socket() -> Connection:
         socket.AF_INET,
         socket.SOCK_STREAM
     )
-# end tcp_socket
 
 def udp_socket() -> Connection:
     """
@@ -56,7 +55,6 @@ def udp_socket() -> Connection:
         socket.AF_INET,
         socket.SOCK_DGRAM
     )
-# end udp_socket
 
 def tcp_bluetooth_socket() -> socket.socket:
     """
@@ -70,7 +68,6 @@ def tcp_bluetooth_socket() -> socket.socket:
         socket.SOCK_STREAM,
         socket.BTPROTO_RFCOMM
     )
-# end tcp_bluetooth_socket
 
 def udp_bluetooth_socket() -> socket.socket:
     """
@@ -84,7 +81,6 @@ def udp_bluetooth_socket() -> socket.socket:
         socket.SOCK_DGRAM,
         socket.BTPROTO_RFCOMM
     )
-# end udp_bluetooth_socket
 
 ProtocolConstructor = Callable[[], "BaseProtocol"] | "BaseProtocol"
 
@@ -105,10 +101,8 @@ class BaseProtocol(metaclass=ABCMeta):
 
         if cls.DEFAULT is None:
             return BHP()
-        # end if
 
         return cls.DEFAULT()
-    # end protocol
 
     @staticmethod
     @abstractmethod
@@ -118,7 +112,6 @@ class BaseProtocol(metaclass=ABCMeta):
 
         :return: The socket object.
         """
-    # end socket
 
     def protocols_chain(self) -> list["BaseProtocol"]:
         """
@@ -128,7 +121,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return [self]
-    # end protocols_chain
 
     def protocol_types_chain(self) -> list[type["BaseProtocol"]]:
         """
@@ -138,7 +130,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return [type(protocol) for protocol in self.protocols_chain()]
-    # end protocol_types_chain
 
     def is_tcp(self) -> bool:
         """
@@ -148,7 +139,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, TCP)
-    # end is_tcp
 
     def is_udp(self) -> bool:
         """
@@ -158,7 +148,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, UDP)
-    # end is_udp
 
     def is_bcp(self) -> bool:
         """
@@ -168,7 +157,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, BCP)
-    # end is_bcp
 
     def is_bhp(self) -> bool:
         """
@@ -178,7 +166,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, BHP)
-    # end is_bhp
 
     def is_tcp_based(self) -> bool:
         """
@@ -188,7 +175,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, TCP)
-    # end is_tcp_based
 
     def is_udp_based(self) -> bool:
         """
@@ -198,7 +184,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, UDP)
-    # end is_udp_based
 
     def is_bcp_based(self) -> bool:
         """
@@ -208,7 +193,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, BCP)
-    # end is_bcp_based
 
     def is_bhp_based(self) -> bool:
         """
@@ -218,7 +202,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, BHP)
-    # end is_bhp_based
 
     def is_wrapper_protocol(self) -> bool:
         """
@@ -228,7 +211,6 @@ class BaseProtocol(metaclass=ABCMeta):
         """
 
         return isinstance(self, WrapperProtocol)
-    # end is_wrapper_protocol
 
     @abstractmethod
     def send(
@@ -246,7 +228,6 @@ class BaseProtocol(metaclass=ABCMeta):
 
         :return: The received message from the server.
         """
-    # end send
 
     @abstractmethod
     def receive(
@@ -264,8 +245,6 @@ class BaseProtocol(metaclass=ABCMeta):
 
         :return: The received message from the server.
         """
-    # end receive
-# end BaseProtocol
 
 class BufferedProtocol(BaseProtocol, metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
@@ -281,11 +260,8 @@ class BufferedProtocol(BaseProtocol, metaclass=ABCMeta):
 
         if buffer is None:
             buffer = self.BUFFER
-        # end if
 
         self.buffer = buffer
-    # end __init__
-# end BufferedProtocol
 
 class EmptyProtocol(BaseProtocol, metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
@@ -304,7 +280,6 @@ class EmptyProtocol(BaseProtocol, metaclass=ABCMeta):
 
         self._send = send
         self._receive = receive
-    # end __init__
 
     def send(
             self,
@@ -323,7 +298,6 @@ class EmptyProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self._send(connection, data, address)
-    # end send
 
     def receive(
             self,
@@ -342,8 +316,6 @@ class EmptyProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self._receive(connection, buffer, address)
-    # end receive
-# end EmptyProtocol
 
 class TCP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
@@ -359,7 +331,6 @@ class TCP(BufferedProtocol):
         """
 
         return tcp_socket()
-    # end socket
 
     def send(
             self,
@@ -380,7 +351,6 @@ class TCP(BufferedProtocol):
         connection.send(data)
 
         return data, address
-    # end send
 
     def receive(
             self,
@@ -399,8 +369,6 @@ class TCP(BufferedProtocol):
         """
 
         return connection.recv(buffer or self.buffer), address
-    # end receive
-# end TCP
 
 class UDP(BufferedProtocol):
     """Defines the basic parameters for the communication."""
@@ -416,7 +384,6 @@ class UDP(BufferedProtocol):
         """
 
         return udp_socket()
-    # end socket
 
     def send(
             self,
@@ -436,12 +403,10 @@ class UDP(BufferedProtocol):
 
         if address is None:
             raise ValueError("address must be a tuple of ip and port.")
-        # end if
 
         connection.sendto(data, address)
 
         return data, address
-    # end send
 
     def receive(
             self,
@@ -460,8 +425,6 @@ class UDP(BufferedProtocol):
         """
 
         return connection.recvfrom(buffer or self.buffer)
-    # end receive
-# end UDP
 
 class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
@@ -474,7 +437,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         self.protocol = protocol
-    # end __init__
 
     def is_tcp_based(self) -> bool:
         """
@@ -484,7 +446,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self.protocol.is_tcp_based()
-    # end is_tcp_based
 
     def is_udp_based(self) -> bool:
         """
@@ -494,7 +455,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self.protocol.is_udp_based()
-    # end is_udp_based
 
     def is_bcp_based(self) -> bool:
         """
@@ -504,7 +464,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self.is_bcp() or self.protocol.is_bcp_based()
-    # end is_bcp_based
 
     def is_bhp_based(self) -> bool:
         """
@@ -514,7 +473,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self.is_bhp() or self.protocol.is_bhp_based()
-    # end is_bhp_based
 
     def protocols_chain(self) -> list[BaseProtocol]:
         """
@@ -524,7 +482,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return [self, *self.protocol.protocols_chain()]
-    # end protocols_chain
 
     def socket(self) -> Connection:
         """
@@ -534,7 +491,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
         """
 
         return self.protocol.socket()
-    # end socket
 
     @abstractmethod
     def send(
@@ -552,7 +508,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
 
         :return: The received message from the server.
         """
-    # end send
 
     @abstractmethod
     def receive(
@@ -570,8 +525,6 @@ class WrapperProtocol(BaseProtocol, metaclass=ABCMeta):
 
         :return: The received message from the server.
         """
-    # end receive
-# end ProtocolWrapper
 
 class IdentityWrapperProtocol(WrapperProtocol):
     """Defines the basic parameters for the communication."""
@@ -599,7 +552,6 @@ class IdentityWrapperProtocol(WrapperProtocol):
             data=data,
             address=address
         )
-    # end send
 
     def receive(
             self,
@@ -622,8 +574,6 @@ class IdentityWrapperProtocol(WrapperProtocol):
             buffer=buffer,
             address=address
         )
-    # end receive
-# end IdentityWrapperProtocol
 
 class BHP(WrapperProtocol):
     """Defines the basic parameters for the communication."""
@@ -640,7 +590,6 @@ class BHP(WrapperProtocol):
         """
 
         super().__init__(protocol=protocol or TCP())
-    # end __init__
 
     def send(
             self,
@@ -665,7 +614,6 @@ class BHP(WrapperProtocol):
             data=data,
             address=address
         )
-    # end send
 
     def receive(
             self,
@@ -696,18 +644,14 @@ class BHP(WrapperProtocol):
                 (length_message.count("0") == len(length_message))
             ):
                 return b'', address
-            # end if
 
             buffer = int(length_message)
-        # end if
 
         return self.protocol.receive(
             connection=connection,
             buffer=buffer,
             address=address
         )
-    # end receive
-# end BCP
 
 class BCP(BHP):
     """Defines the basic parameters for the communication."""
@@ -729,7 +673,6 @@ class BCP(BHP):
         super().__init__(protocol=protocol)
 
         self._buffer = buffer
-    # end __init__
 
     @property
     def buffer(self) -> int:
@@ -745,13 +688,10 @@ class BCP(BHP):
                     f"Size is not defined and protocol is "
                     f"not a subclass of {BufferedProtocol}"
                 )
-            # end if
 
             return self.protocol.buffer
-        # end if
 
         return self._buffer
-    # end buffer
 
     @buffer.setter
     def buffer(self, value: int) -> None:
@@ -762,7 +702,6 @@ class BCP(BHP):
         """
 
         self._buffer = value
-    # end buffer
 
     def receive(
             self,
@@ -795,10 +734,8 @@ class BCP(BHP):
                 (length_message.count("0") == len(length_message))
             ):
                 return b'', address
-            # end if
 
             buffer = int(length_message)
-        # end if
 
         buffer = buffer or self.buffer
 
@@ -808,7 +745,6 @@ class BCP(BHP):
                 buffer=length,
                 address=address
             )
-        # end if
 
         data: list[bytes] = []
 
@@ -820,7 +756,6 @@ class BCP(BHP):
             )
 
             data.append(payload)
-        # end for
 
         if length % buffer:
             payload, address = self.protocol.receive(
@@ -830,11 +765,8 @@ class BCP(BHP):
             )
 
             data.append(payload)
-        # end if
 
         return b''.join(data), address
-    # end receive
-# end BCP
 
 def is_tcp(connection: Connection) -> bool:
     """
@@ -846,7 +778,6 @@ def is_tcp(connection: Connection) -> bool:
     """
 
     return connection.type == socket.SOCK_STREAM
-# end is_tcp
 
 def is_udp(connection: Connection) -> bool:
     """
@@ -858,7 +789,6 @@ def is_udp(connection: Connection) -> bool:
     """
 
     return connection.type == socket.SOCK_DGRAM
-# end is_udp
 
 def is_tcp_bluetooth(connection: Connection) -> bool:
     """
@@ -870,7 +800,6 @@ def is_tcp_bluetooth(connection: Connection) -> bool:
     """
 
     return is_tcp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
-# end is_tcp_bluetooth
 
 def is_udp_bluetooth(connection: Connection) -> bool:
     """
@@ -882,7 +811,6 @@ def is_udp_bluetooth(connection: Connection) -> bool:
     """
 
     return is_udp(connection) and (connection.proto == socket.BTPROTO_RFCOMM)
-# end is_udp_bluetooth
 
 def default_protocol() -> BaseProtocol:
     """
@@ -892,7 +820,6 @@ def default_protocol() -> BaseProtocol:
     """
 
     return BaseProtocol.protocol()
-# end default_protocol
 
 def set_default_protocol(constructor: ProtocolConstructor) -> None:
     """
@@ -902,10 +829,8 @@ def set_default_protocol(constructor: ProtocolConstructor) -> None:
     """
 
     BaseProtocol.DEFAULT = constructor
-# end set_default_protocol
 
 def reset_default_protocol() -> None:
     """Resets protocol object."""
 
     BaseProtocol.DEFAULT = None
-# end reset_default_protocol

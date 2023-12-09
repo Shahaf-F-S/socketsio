@@ -72,8 +72,6 @@ class Socket:
 
         if self.on_init:
             self.on_init(self)
-        # end if
-    # end __init__
 
     @property
     def empty(self) -> bool:
@@ -84,7 +82,6 @@ class Socket:
         """
 
         return self.connection is None
-    # end empty
 
     @property
     def closed(self) -> bool:
@@ -95,7 +92,6 @@ class Socket:
         """
 
         return self._closed
-    # end closed
 
     @property
     def usable(self) -> bool:
@@ -106,7 +102,6 @@ class Socket:
         """
 
         return not self.empty or self.reusable
-    # end usable
 
     @property
     def reusable(self) -> bool:
@@ -117,7 +112,6 @@ class Socket:
         """
 
         return self._reusable
-    # end reusable
 
     @property
     def address(self) -> Address:
@@ -128,7 +122,6 @@ class Socket:
         """
 
         return self._address
-    # end address
 
     @property
     def connections_count(self) -> int:
@@ -139,7 +132,6 @@ class Socket:
         """
 
         return self._connections_count
-    # end connections_count
 
     def is_tcp(self) -> bool:
         """
@@ -149,7 +141,6 @@ class Socket:
         """
 
         return is_tcp(self.connection or self.protocol.socket())
-    # end is_tcp
 
     def is_udp(self) -> bool:
         """
@@ -159,7 +150,6 @@ class Socket:
         """
 
         return is_udp(self.connection or self.protocol.socket())
-    # end is_udp
 
     def is_tcp_bluetooth(self) -> bool:
         """
@@ -169,7 +159,6 @@ class Socket:
         """
 
         return is_tcp_bluetooth(self.connection or self.protocol.socket())
-    # end is_tcp_bluetooth
 
     def is_udp_bluetooth(self) -> bool:
         """
@@ -179,7 +168,6 @@ class Socket:
         """
 
         return is_udp_bluetooth(self.connection or self.protocol.socket())
-    # end is_udp_bluetooth
 
     def validate_open(self) -> None:
         """Validates that the socket is not closed."""
@@ -190,8 +178,6 @@ class Socket:
                 f"{'an empty' if self.reusable else  'a used and non-reusable'}, "
                 "server socket."
             )
-        # end if
-    # end validate_open
 
     def validate_connection(self) -> None:
         """Validates a connection."""
@@ -209,11 +195,8 @@ class Socket:
                     "Only one connection is allowed on a non-reusable socket. "
                     "Consider making the socket reusable."
                 )
-            # end if
-        # end if
 
         self.validate_open()
-    # end validate_connection
 
     def send(
             self,
@@ -238,10 +221,8 @@ class Socket:
 
         if self.on_send:
             self.on_send(self, *output)
-        # end if
 
         return output
-    # end send
 
     def receive(
             self,
@@ -264,14 +245,11 @@ class Socket:
 
         if address is None and self.address is None:
             self._address = new_address
-        # end if
 
         if self.on_receive:
             self.on_receive(self, data, new_address)
-        # end if
 
         return data, new_address
-    # end receive
 
     def close(self) -> None:
         """Closes the connection."""
@@ -288,12 +266,9 @@ class Socket:
             self.connection = None
 
             self._closed = True
-        # end if
 
         if self.on_close:
             self.on_close(self)
-        # end if
-    # end close
 
     def clone(self) -> Self:
         """
@@ -308,5 +283,3 @@ class Socket:
             address=self.address,
             reusable=self.reusable
         )
-    # end clone
-# end Socket

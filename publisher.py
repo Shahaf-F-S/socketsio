@@ -8,7 +8,6 @@ from socketsio import Server
 
 from socketsio.pubsub import DataStore, Data, SubscriptionStreamer, Authorization
 
-
 IP = "127.0.0.1"
 PORT = 5080
 
@@ -35,7 +34,6 @@ class Producer:
             data=random.choice((self.BUY_DATA, self.SELL_DATA)),
             time=time.time()
         )
-
 
 def main() -> None:
 
@@ -76,7 +74,6 @@ def main() -> None:
 
     screener.run(block=False)
     service.run(block=True)
-
 
 if __name__ == "__main__":
     main()
