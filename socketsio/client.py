@@ -123,7 +123,7 @@ class Client(Socket):
 
         self.validate_connection()
 
-        if not self.connected:
+        if not self.is_udp() and not self.connected:
             if self.preconnected:
                 self.reconnect()
 
@@ -151,7 +151,7 @@ class Client(Socket):
 
         self.validate_connected()
 
-        return self.protocol.send(
+        return super().send(
             connection=connection or self.connection,
             data=data, address=address or self._address
         )
@@ -172,7 +172,7 @@ class Client(Socket):
 
         self.validate_connected()
 
-        return self.protocol.receive(
+        return super().receive(
             connection=connection or self.connection,
             address=address or self._address
         )
