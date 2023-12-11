@@ -48,7 +48,9 @@ def main() -> None:
 
     streamer = SubscriptionStreamer(
         storage=storage,
-        authenticate=lambda data: Authorization(data.data in AUTHORIZED)
+        authenticate=lambda controller, data: Authorization(data.data in AUTHORIZED),
+        on_join=lambda controller: print(f"client connected: {controller.socket.address}"),
+        on_disconnect=lambda controller: print(f"client disconnected: {controller.socket.address}")
     )
 
     server = Server()
@@ -56,14 +58,9 @@ def main() -> None:
 
     service = Operator(
         operation=lambda: server.handle(
-            action=lambda _, socket: (
-                print(f"client connected: {socket.address}"),
-                streamer.controller(
-                    socket=socket,
-                    exception_handler=print
-                ).run(send=True, receive=True, block=True),
-                print(f"client disconnected: {socket.address}")
-            )
+            action=lambda _, socket: streamer.controller(
+                socket=socket, exception_handler=print
+            ).run(send=True, receive=True, block=True)
         ),
         termination=lambda: (
             print("disconnecting server"),

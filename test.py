@@ -31,8 +31,8 @@ def action(server: Server, client: Socket) -> None:
             print("server:", (received, address))
 
             sent = (
-                    f"server received from "
-                    f"{address}: ".encode() + received
+                f"server received from "
+                f"{address}: ".encode() + received
             )
 
             client.send(sent)

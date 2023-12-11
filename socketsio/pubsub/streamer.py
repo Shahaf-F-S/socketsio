@@ -78,7 +78,6 @@ class StreamController:
 
         self.authenticated = authenticated
         self.termination = termination
-
         self.sender = sender
         self.receiver = receiver
 
@@ -89,7 +88,7 @@ class StreamController:
             self.sender.stop(),
             self.receiver.stop(),
             (saved_termination() if saved_termination else None),
-            (self.termination if self.termination else ())
+            (self.termination() if self.termination else ())
         )
 
         self._handler = handler or Handler()
@@ -246,11 +245,12 @@ class Streamer:
             constructor: Callable[[], StreamController] | type[StreamController] = None,
             sender: Callable[[StreamController], Any] = None,
             receiver: Callable[[StreamController], Any] = None,
-            authenticate: Callable[[Data], Authorization] = None,
+            authenticate: Callable[[StreamController, Data], Authorization] = None,
             on_join: Callable[[StreamController], Any] = None,
             on_authorized: Callable[[StreamController, Data], Any] = None,
             on_unauthorized: Callable[[StreamController, Data], Any] = None,
             on_leave: Callable[[StreamController, Data], Any] = None,
+            on_disconnect: Callable[[StreamController], Any] = None,
             endpoints: dict[str, Endpoint] = None,
             delay: float = None,
             autorun: bool = False
@@ -267,6 +267,7 @@ class Streamer:
         :param on_authorized: The callback to run for client authorized.
         :param on_unauthorized: The callback to run on client unauthorized.
         :param on_leave: The callback to run on client leave.
+        :param on_disconnect: The callback to run on client disconnect.
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
         :param authenticate: The value to authenticate clients.
@@ -282,11 +283,15 @@ class Streamer:
         self.sender = sender
         self.receiver = receiver
         self.on_leave = on_leave
+        self.on_disconnect = on_disconnect
         self.on_unauthorized = on_unauthorized
         self.on_authorized = on_authorized
         self.on_join = on_join
         self.constructor = constructor or StreamController
-        self.authenticate = authenticate or (lambda: Authorization(True))
+        self.authenticate = (
+            authenticate or
+            (lambda controller, data: Authorization(True))
+        )
 
         if self.authenticate and AUTHENTICATE not in self.endpoints:
             self.endpoints[AUTHENTICATE] = self.authentication
@@ -367,7 +372,7 @@ class Streamer:
 
     def authentication(self, controller: StreamController, data: Data) -> None:
 
-        authorization = self.authenticate(data)
+        authorization = self.authenticate(controller, data)
 
         if not authorization.authorized:
             response = (
@@ -456,7 +461,7 @@ class Streamer:
             self,
             socket: Socket,
             exception_handler: Callable[[Exception], Any] = None,
-            autorun: bool = None,
+            run: bool = None,
             send: bool = True,
             receive: bool = True,
             block: bool = True
@@ -466,7 +471,7 @@ class Streamer:
 
         :param socket: The socket for the controller.
         :param exception_handler: The exception handler for the handler of the controller.
-        :param autorun: The value to run the controller.
+        :param run: The value to run the controller.
         :param send: The value to run the sending process of the controller.
         :param receive: The value to run the receiving process of the controller.
         :param block: The value to block the thread on run.
@@ -474,8 +479,8 @@ class Streamer:
         :return: The controller object.
         """
 
-        if autorun is None:
-            autorun = self.autorun
+        if run is None:
+            run = self.autorun
 
         controller = (self.constructor or StreamController)(
             socket=socket,
@@ -483,6 +488,7 @@ class Streamer:
             authenticated=self.authenticate is None,
             sender=lambda: self.send(controller),
             receiver=lambda: self.receive(controller),
+            termination=lambda: self.on_disconnect(controller),
             handler=Handler(
                 exception_handler=exception_handler,
                 catch=exception_handler is not None,
@@ -497,7 +503,7 @@ class Streamer:
         if self.on_join:
             self.on_join(controller)
 
-        if autorun:
+        if run:
             controller.run(block=block, send=send, receive=receive)
 
         return controller
@@ -584,16 +590,17 @@ class SubscriptionStreamer(Streamer):
             constructor: Callable[[], StreamController] | type[StreamController] = None,
             sender: Callable[[StreamController], Any] = None,
             receiver: Callable[[StreamController], Any] = None,
-            authenticate: Callable[[Data], Authorization] = None,
+            authenticate: Callable[[StreamController, Data], Authorization] = None,
             on_join: Callable[[StreamController], Any] = None,
             on_authorized: Callable[[StreamController, Data], Any] = None,
             on_unauthorized: Callable[[StreamController, Data], Any] = None,
             on_leave: Callable[[StreamController, Data], Any] = None,
+            on_disconnect: Callable[[StreamController], Any] = None,
             endpoints: dict[str, Endpoint] = None,
             storage: DataStore = None,
             delay: float = None,
             autorun: bool = False,
-            data_name: str = None
+            name: str = None
     ) -> None:
         """
         Defines the attributes of the object.
@@ -606,11 +613,12 @@ class SubscriptionStreamer(Streamer):
         :param on_authorized: The callback to run for client authorized.
         :param on_unauthorized: The callback to run on client unauthorized.
         :param on_leave: The callback to run on client leave.
+        :param on_disconnect: The callback to run on client disconnect.
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
         :param subscriber: The subscriber base class.
         :param storage: The storage object.
-        :param data_name: The data name.
+        :param name: The data name.
         """
 
         if storage is None and sender is None:
@@ -620,16 +628,17 @@ class SubscriptionStreamer(Streamer):
             )
 
         self.subscriber = subscriber or ServerSubscriber
-        self.data_name = data_name
+        self.name = name
+        self.storage = storage
         self.subscribers: dict[StreamController, ServerSubscriber] = {}
 
         super().__init__(
             sender=sender or (
                 lambda controller: subscribed_stored_data_sender(
-                    storage=storage,
+                    storage=self.storage,
                     socket=controller.queue_socket,
                     subscriber=self.subscribers[controller],
-                    name=self.data_name
+                    name=self.name
                 )
             ),
             constructor=constructor,
@@ -638,6 +647,7 @@ class SubscriptionStreamer(Streamer):
             delay=delay,
             autorun=autorun,
             on_join=on_join,
+            on_disconnect=on_disconnect,
             on_authorized=on_authorized,
             on_unauthorized=on_unauthorized,
             on_leave=on_leave,
@@ -647,15 +657,13 @@ class SubscriptionStreamer(Streamer):
             }
         )
 
-        self.storage = storage
-
     def controller(
             self,
             socket: Socket,
             exception_handler: Callable[[Exception], Any] = None,
             send: bool = True,
             receive: bool = True,
-            autorun: bool = None,
+            run: bool = None,
             block: bool = True
     ) -> StreamController:
         """
@@ -663,7 +671,7 @@ class SubscriptionStreamer(Streamer):
 
         :param socket: The socket for the controller.
         :param exception_handler: The exception handler for the handler of the controller.
-        :param autorun: The value to run the controller.
+        :param run: The value to run the controller.
         :param send: The value to run the sending process of the controller.
         :param receive: The value to run the receiving process of the controller.
         :param block: The value to block the thread on run.
@@ -671,13 +679,14 @@ class SubscriptionStreamer(Streamer):
         :return: The controller object.
         """
 
-        if autorun is None:
-            autorun = self.autorun
+        if run is None:
+            run = self.autorun
 
         controller = super().controller(
-            socket,
+            socket=socket,
             exception_handler=exception_handler,
-            block=block
+            block=block,
+            run=False
         )
 
         self.subscribers.setdefault(
@@ -685,7 +694,7 @@ class SubscriptionStreamer(Streamer):
             self.subscriber(controller=controller)
         )
 
-        if autorun:
+        if run:
             controller.run(block=block, send=send, receive=receive)
 
         return controller
