@@ -32,7 +32,23 @@ __all__ = [
     "default_subscription_streamer_endpoints",
     "default_streamer_endpoints",
     "CLOSE",
-    "Endpoint"
+    "Endpoint",
+    "DEFAULT_ENDPOINT_NAMES",
+    "DEFAULT_SUBSCRIPTION_ENDPOINT_NAMES",
+    "UNPAUSE_ENDPOINT_DESCRIPTION",
+    "UNSUBSCRIBE_ENDPOINT_DESCRIPTION",
+    "PAUSE_ENDPOINT_DESCRIPTION",
+    "SUBSCRIBE_ENDPOINT_DESCRIPTION",
+    "CLOSE_ENDPOINT_DESCRIPTION",
+    "AUTHENTICATION_ENDPOINT_DESCRIPTION",
+    "subscribe_endpoint",
+    "unsubscribe_endpoint",
+    "pause_endpoint",
+    "unpause_endpoint",
+    "close_endpoint",
+    "streamer_receive",
+    "authentication_endpoint",
+    "authentication"
 ]
 
 TIME = "time"
@@ -287,6 +303,57 @@ CLOSE_ENDPOINT_DESCRIPTION = (
     "closes the connection."
 )
 
+def streamer_receive(
+        controller: StreamController,
+        endpoints: dict[str, Endpoint],
+        authenticate: bool = False
+) -> None:
+    """
+    Runs the receiving handler.
+
+    :param controller: The controller to pass to the handler.
+    :param endpoints: The endpoints of the service.
+    :param authenticate: The value to authenticate the client.
+    """
+
+    received = controller.socket.receive()[0]
+
+    if not received:
+        return
+
+    payload = {}
+
+    response = "invalid request"
+
+    try:
+        payload = Data.decode(received)
+        data = Data.load(payload)
+
+        if (
+            authenticate and
+            (data.name != AUTHENTICATE) and
+            (not controller.authenticated)
+        ):
+            response = "unauthenticated"
+
+            raise ValueError
+
+        endpoints[data.name](controller, data)
+
+    except (ValueError, TypeError, KeyError):
+        controller.queue_socket.send(
+            Data.encode(
+                Data(
+                    name=payload.get(Data.NAME, RESPONSE),
+                    time=time.time(),
+                    data={
+                        RESPONSE: response,
+                        REQUEST: payload
+                    }
+                )
+            )
+        )
+
 class Streamer:
     """A class to represent an endpoints based stream producer and handler."""
 
@@ -403,69 +470,6 @@ class Streamer:
         for controller in self.clients.values():
             controller.close()
 
-    def send(self, controller: StreamController) -> None:
-        """
-        Runs the sending handler.
-
-        :param controller: The controller to pass to the handler.
-        """
-
-        if self.authenticate and not controller.authenticated:
-            return
-
-        if self.sender:
-            self.sender(controller)
-
-    def receive(self, controller: StreamController) -> None:
-        """
-        Runs the receiving handler.
-
-        :param controller: The controller to pass to the handler.
-        """
-
-        if self.receiver is not None:
-            self.receiver(controller)
-
-            return
-
-        received = controller.socket.receive()[0]
-
-        if not received:
-            return
-
-        payload = {}
-
-        response = "invalid request"
-
-        try:
-            payload = Data.decode(received)
-            data = Data.load(payload)
-
-            if (
-                self.authenticate and
-                (data.name != AUTHENTICATE) and
-                (not controller.authenticated)
-            ):
-                response = "unauthenticated"
-
-                raise ValueError
-
-            self.endpoints[data.name](controller, data)
-
-        except (ValueError, TypeError, KeyError):
-            controller.queue_socket.send(
-                Data.encode(
-                    Data(
-                        name=payload.get(Data.NAME, RESPONSE),
-                        time=time.time(),
-                        data={
-                            RESPONSE: response,
-                            REQUEST: payload
-                        }
-                    )
-                )
-            )
-
     def controller(
             self,
             socket: Socket,
@@ -495,8 +499,22 @@ class Streamer:
             socket=socket,
             delay=self.delay,
             authenticated=self.authenticate is None,
-            sender=lambda: self.send(controller),
-            receiver=lambda: self.receive(controller),
+            sender=lambda: (
+                self.sender(controller)
+                if (
+                    (not self.authenticate) or
+                    controller.authenticated
+                ) else None
+            ),
+            receiver=lambda: (
+                self.receiver(controller)
+                if self.receiver else
+                streamer_receive(
+                    controller=controller,
+                    endpoints=self.endpoints,
+                    authenticate=self.authenticate is not None
+                )
+            ),
             termination=lambda: self.on_disconnect(controller),
             handler=Handler(
                 exception_handler=exception_handler,
@@ -617,8 +635,14 @@ def authentication_endpoint(
             ),
             controller=controller,
             data=data,
-            on_authorized=on_authorized or (streamer.on_authorized if streamer else None),
-            on_unauthorized=on_unauthorized or (streamer.on_unauthorized if streamer else None)
+            on_authorized=(
+                on_authorized or
+                (streamer.on_authorized if streamer else None)
+            ),
+            on_unauthorized=(
+                on_unauthorized or
+                (streamer.on_unauthorized if streamer else None)
+            )
         ),
         name=AUTHENTICATE,
         description=description or AUTHENTICATION_ENDPOINT_DESCRIPTION
@@ -677,21 +701,44 @@ def close_endpoint(streamer: Streamer = None, description: str = None) -> Endpoi
         )
     )
 
-def default_streamer_endpoints(streamer: Streamer) -> dict[str, Endpoint]:
+PAUSE = "pause"
+UNPAUSE = "unpause"
+AUTHENTICATE = "authenticate"
+CLOSE = "close"
+
+DEFAULT_ENDPOINT_NAMES = (AUTHENTICATE, PAUSE, UNPAUSE, CLOSE)
+
+def default_streamer_endpoints(
+        streamer: Streamer,
+        endpoints: Iterable[str] = None
+) -> dict[str, Endpoint]:
     """
     Creates the default streamer endpoints.
 
     :param streamer: The streamer object.
+    :param endpoints: The endpoint names to add.
 
     :return: The dictionary of the endpoint names and endpoint callbacks.
     """
 
-    return {
-        AUTHENTICATE: authentication_endpoint(streamer=streamer),
-        PAUSE: pause_endpoint(),
-        UNPAUSE: unpause_endpoint(),
-        CLOSE: close_endpoint(streamer=streamer)
-    }
+    if endpoints is None:
+        endpoints = DEFAULT_ENDPOINT_NAMES
+
+    built: dict[str, Endpoint] = {}
+
+    if AUTHENTICATE in endpoints:
+        built[AUTHENTICATE] = authentication_endpoint(streamer=streamer)
+
+    if PAUSE in endpoints:
+        built[PAUSE] = pause_endpoint()
+
+    if UNPAUSE in endpoints:
+        built[UNPAUSE] = unpause_endpoint()
+
+    if CLOSE in endpoints:
+        built[CLOSE] = close_endpoint(streamer=streamer)
+
+    return built
 
 class ServerSubscriber:
     """A class to represent a server-side subscriber."""
@@ -732,16 +779,10 @@ class ServerSubscriber:
         self.events.difference_update(events or ())
 
 DATA = "data"
-PAUSE = "pause"
-UNPAUSE = "unpause"
-SUBSCRIBE = "subscribe"
-UNSUBSCRIBE = "unsubscribe"
-AUTHENTICATE = "authenticate"
-CLOSE = "close"
 
 def subscribed_stored_data_sender(
         storage: DataStore,
-        socket: Socket,
+        controller: StreamController,
         subscriber: ServerSubscriber,
         name: str = None
 ) -> None:
@@ -749,10 +790,13 @@ def subscribed_stored_data_sender(
     Sends the storage data by the subscriptions of the subscriber.
 
     :param storage: The data storage object.
-    :param socket: The socket object for sending data.
+    :param controller: The controller object.
     :param subscriber: The subscriber object.
     :param name: The name of the data to send
     """
+
+    if not controller.authenticated:
+        return
 
     storage_data = storage.fetch_all(subscriber.events)
 
@@ -764,7 +808,9 @@ def subscribed_stored_data_sender(
     subscriber.data = storage_data
 
     if data:
-        socket.send(Data.encode(Data(name=name or DATA, time=time.time(), data=data)))
+        controller.queue_socket.send(
+            Data.encode(Data(name=name or DATA, time=time.time(), data=data))
+        )
 
 class SubscriptionStreamer(Streamer):
     """A class to represent a subscription based stream producer and handler."""
@@ -821,7 +867,7 @@ class SubscriptionStreamer(Streamer):
             sender=sender or (
                 lambda controller: subscribed_stored_data_sender(
                     storage=self.storage,
-                    socket=controller.queue_socket,
+                    controller=controller,
                     subscriber=self.subscribers[controller],
                     name=self.name
                 )
@@ -884,7 +930,15 @@ class SubscriptionStreamer(Streamer):
 
         return controller
 
-def subscribe_endpoint(streamer: SubscriptionStreamer = None, description: str = None) -> Endpoint:
+SUBSCRIBE = "subscribe"
+UNSUBSCRIBE = "unsubscribe"
+
+DEFAULT_SUBSCRIPTION_ENDPOINT_NAMES = (*DEFAULT_ENDPOINT_NAMES, SUBSCRIBE, UNSUBSCRIBE)
+
+def subscribe_endpoint(
+        streamer: SubscriptionStreamer = None,
+        description: str = None
+) -> Endpoint:
     """
     Creates a subscribe endpoint.
 
@@ -902,7 +956,10 @@ def subscribe_endpoint(streamer: SubscriptionStreamer = None, description: str =
         )
     )
 
-def unsubscribe_endpoint(streamer: SubscriptionStreamer = None, description: str = None) -> Endpoint:
+def unsubscribe_endpoint(
+        streamer: SubscriptionStreamer = None,
+        description: str = None
+) -> Endpoint:
     """
     Creates an unsubscribe endpoint.
 
@@ -921,18 +978,26 @@ def unsubscribe_endpoint(streamer: SubscriptionStreamer = None, description: str
     )
 
 def default_subscription_streamer_endpoints(
-        streamer: SubscriptionStreamer
+        streamer: SubscriptionStreamer, endpoints: Iterable[str] = None
 ) -> dict[str, Endpoint]:
     """
     Creates the default subscription streamer endpoints.
 
     :param streamer: The streamer object.
+    :param endpoints" The endpoint names to include.
 
     :return: The dictionary of the endpoint names and endpoint callbacks.
     """
 
-    return {
-        **default_streamer_endpoints(streamer=streamer),
-        SUBSCRIBE: subscribe_endpoint(streamer=streamer),
-        UNSUBSCRIBE: unsubscribe_endpoint(streamer=streamer)
-    }
+    if endpoints is None:
+        endpoints = DEFAULT_SUBSCRIPTION_ENDPOINT_NAMES
+
+    built = default_streamer_endpoints(streamer=streamer, endpoints=endpoints)
+
+    if SUBSCRIBE in endpoints:
+        built[SUBSCRIBE] = subscribe_endpoint(streamer=streamer)
+
+    if UNSUBSCRIBE in endpoints:
+        built[UNSUBSCRIBE] = unsubscribe_endpoint(streamer=streamer)
+
+    return built
