@@ -1,7 +1,7 @@
 # streamer.py
 
 import time
-from typing import Callable, Any, Iterable
+from typing import Callable, Any, Iterable, overload
 from dataclasses import dataclass
 
 from represent import represent
@@ -25,17 +25,20 @@ __all__ = [
     "UNSUBSCRIBE",
     "PAUSE",
     "DATA",
+    "AUTHORIZED",
     "subscribed_stored_data_sender",
     "Authorization",
     "AUTHENTICATE",
     "default_subscription_streamer_endpoints",
     "default_streamer_endpoints",
-    "CLOSE"
+    "CLOSE",
+    "Endpoint"
 ]
 
 TIME = "time"
 
 RESPONSE = "response"
+AUTHORIZED = "authorized"
 REQUEST = "request"
 
 ACTION = "action"
@@ -233,7 +236,56 @@ class Authorization:
     authorized: bool
     response: str = None
 
-Endpoint = Callable[[StreamController, Data], Any]
+class Endpoint:
+    def __init__(
+            self,
+            name: str,
+            endpoint: Callable[[StreamController, Data], Any],
+            description: str = None
+    ) -> None:
+        """
+        Defines the attributes of the object.
+
+        :param endpoint: The endpoint callable.
+        :param name: The name of the endpoint.
+        :param description: The description of the endpoint.
+        """
+
+        self.name = name
+        self.description = description
+        self.endpoint = endpoint
+
+    def __call__(self, controller: StreamController, data: Data) -> Any:
+        """
+        Calls the endpoint callable.
+
+        :param controller: The controller object.
+        :param data: The received data object.
+
+        :return: The returned value from the endpoint.
+        """
+
+        return self.endpoint(controller, data)
+
+AUTHENTICATION_ENDPOINT_DESCRIPTION = (
+    "receives authentication "
+    "data and grants access if authorized."
+)
+PAUSE_ENDPOINT_DESCRIPTION = (
+    "stops the data sending from the server."
+)
+UNPAUSE_ENDPOINT_DESCRIPTION = (
+    "resumes the data sending from the server that was paused."
+)
+SUBSCRIBE_ENDPOINT_DESCRIPTION = (
+    "subscribes to receive data according to the data in the request."
+)
+UNSUBSCRIBE_ENDPOINT_DESCRIPTION = (
+    "unsubscribes to receive data according to the data in the request."
+)
+CLOSE_ENDPOINT_DESCRIPTION = (
+    "closes the connection."
+)
 
 class Streamer:
     """A class to represent an endpoints based stream producer and handler."""
@@ -273,13 +325,9 @@ class Streamer:
         :param authenticate: The value to authenticate clients.
         """
 
-        if endpoints is None:
-            endpoints = {}
-
         self._delay = delay or self.MIN_DELAY
 
         self.autorun = autorun
-        self.endpoints = endpoints
         self.sender = sender
         self.receiver = receiver
         self.on_leave = on_leave
@@ -288,13 +336,11 @@ class Streamer:
         self.on_authorized = on_authorized
         self.on_join = on_join
         self.constructor = constructor or StreamController
-        self.authenticate = (
-            authenticate or
-            (lambda controller, data: Authorization(True))
-        )
-
-        if self.authenticate and AUTHENTICATE not in self.endpoints:
-            self.endpoints[AUTHENTICATE] = self.authentication
+        self.authenticate = authenticate
+        self.endpoints = {
+            **default_streamer_endpoints(self),
+            **(endpoints or {})
+        }
 
         self.clients: dict[tuple[str, int], StreamController] = {}
 
@@ -369,43 +415,6 @@ class Streamer:
 
         if self.sender:
             self.sender(controller)
-
-    def authentication(self, controller: StreamController, data: Data) -> None:
-
-        authorization = self.authenticate(controller, data)
-
-        if not authorization.authorized:
-            response = (
-                authorization.response or
-                "invalid authentication"
-            )
-
-        else:
-            response = (
-                authorization.response or
-                "authorized"
-            )
-
-        controller.authenticated = authorization.authorized
-
-        controller.queue_socket.send(
-            Data.encode(
-                Data(
-                    name=data.name,
-                    time=time.time(),
-                    data={
-                        RESPONSE: response,
-                        REQUEST: data.dump()
-                    }
-                )
-            )
-        )
-
-        if self.on_authorized and authorization.authorized:
-            self.on_authorized(controller, data)
-
-        if self.on_unauthorized and not authorization.authorized:
-            self.on_unauthorized(controller, data)
 
     def receive(self, controller: StreamController) -> None:
         """
@@ -507,6 +516,182 @@ class Streamer:
             controller.run(block=block, send=send, receive=receive)
 
         return controller
+
+def authentication(
+        authenticator: Callable[[StreamController, Data], Authorization],
+        controller: StreamController,
+        data: Data,
+        on_authorized: Callable[[StreamController, Data], Any] = None,
+        on_unauthorized: Callable[[StreamController, Data], Any] = None
+) -> None:
+    """
+    Runs an authentication on the data and its controller.
+
+    :param authenticator: The authenticator callable.
+    :param controller: The client controller.
+    :param data: The received data.
+    :param on_authorized: A callback to run when authorized.
+    :param on_unauthorized: A callback to run when not authorized.
+    """
+
+    authorization = authenticator(controller, data)
+
+    if not authorization.authorized:
+        response = (
+            authorization.response or
+            "invalid authentication"
+        )
+
+    else:
+        response = (
+            authorization.response or
+            "authorized"
+        )
+
+    controller.authenticated = authorization.authorized
+
+    controller.queue_socket.send(
+        Data.encode(
+            Data(
+                name=data.name,
+                time=time.time(),
+                data={
+                    RESPONSE: response,
+                    AUTHORIZED: authorization.authorized,
+                    REQUEST: data.dump()
+                }
+            )
+        )
+    )
+
+    if on_authorized and authorization.authorized:
+        on_authorized(controller, data)
+
+    if on_unauthorized and not authorization.authorized:
+        on_unauthorized(controller, data)
+
+@overload
+def authentication_endpoint(
+        streamer: Streamer,
+        authenticator: Callable[[StreamController, Data], Authorization] = None,
+        on_authorized: Callable[[StreamController, Data], Any] = None,
+        on_unauthorized: Callable[[StreamController, Data], Any] = None,
+        description: str = None
+) -> Endpoint:
+    pass
+
+@overload
+def authentication_endpoint(
+        authenticator: Callable[[StreamController, Data], Authorization],
+        on_authorized: Callable[[StreamController, Data], Any] = None,
+        on_unauthorized: Callable[[StreamController, Data], Any] = None,
+        description: str = None
+) -> Endpoint:
+    pass
+
+def authentication_endpoint(
+        streamer: Streamer = None,
+        authenticator: Callable[[StreamController, Data], Authorization] = None,
+        on_authorized: Callable[[StreamController, Data], Any] = None,
+        on_unauthorized: Callable[[StreamController, Data], Any] = None,
+        description: str = None
+) -> Endpoint:
+    """
+    Runs an authentication on the data and its controller.
+
+    :param streamer: The streamer object.
+    :param authenticator: The authenticator callable.
+    :param on_authorized: A callback to run when authorized.
+    :param on_unauthorized: A callback to run when not authorized.
+    :param description: The description of the endpoint.
+
+    :return: The endpoint object.
+    """
+
+    return Endpoint(
+        endpoint=lambda controller, data: authentication(
+            authenticator=(
+                authenticator or
+                (streamer.authenticate if streamer else None) or
+                (lambda _controller, _data: Authorization(True))
+            ),
+            controller=controller,
+            data=data,
+            on_authorized=on_authorized or (streamer.on_authorized if streamer else None),
+            on_unauthorized=on_unauthorized or (streamer.on_unauthorized if streamer else None)
+        ),
+        name=AUTHENTICATE,
+        description=description or AUTHENTICATION_ENDPOINT_DESCRIPTION
+    )
+
+def pause_endpoint(description: str = None) -> Endpoint:
+    """
+    Creates a pause endpoint.
+
+    :param description: The description of the endpoint.
+
+    :return: The endpoint object.
+    """
+
+    return Endpoint(
+        name=PAUSE,
+        description=description or PAUSE_ENDPOINT_DESCRIPTION,
+        endpoint=lambda controller, _: controller.sender.pause()
+    )
+
+def unpause_endpoint(description: str = None) -> Endpoint:
+    """
+    Creates an unpause endpoint.
+
+    :param description: The description of the endpoint.
+
+    :return: The endpoint object.
+    """
+
+    return Endpoint(
+        name=PAUSE,
+        description=description or UNPAUSE_ENDPOINT_DESCRIPTION,
+        endpoint=lambda controller, _: controller.sender.unpause()
+    )
+
+def close_endpoint(streamer: Streamer = None, description: str = None) -> Endpoint:
+    """
+    Creates a closing endpoint.
+
+    :param description: The description for the endpoint.
+    :param streamer: The streamer object for the endpoint.
+
+    :return: The endpoint object.
+    """
+
+    return Endpoint(
+        name=CLOSE,
+        description=description or CLOSE_ENDPOINT_DESCRIPTION,
+        endpoint=lambda controller, data: (
+            controller.close(),
+            (
+                streamer.subscribers.pop(controller, None)
+                if streamer and isinstance(streamer, SubscriptionStreamer) else None
+            ),
+            streamer.on_leave(controller, data) if streamer.on_leave else None
+        )
+    )
+
+def default_streamer_endpoints(streamer: Streamer) -> dict[str, Endpoint]:
+    """
+    Creates the default streamer endpoints.
+
+    :param streamer: The streamer object.
+
+    :return: The dictionary of the endpoint names and endpoint callbacks.
+    """
+
+    return {
+        AUTHENTICATE: authentication_endpoint(streamer=streamer),
+        PAUSE: pause_endpoint(),
+        UNPAUSE: unpause_endpoint(),
+        CLOSE: close_endpoint(streamer=streamer)
+    }
 
 class ServerSubscriber:
     """A class to represent a server-side subscriber."""
@@ -699,29 +884,45 @@ class SubscriptionStreamer(Streamer):
 
         return controller
 
-def default_streamer_endpoints(
-        streamer: SubscriptionStreamer
-) -> dict[str, Callable[[StreamController, Data], Any]]:
+def subscribe_endpoint(streamer: SubscriptionStreamer = None, description: str = None) -> Endpoint:
     """
-    Creates the default streamer endpoints.
+    Creates a subscribe endpoint.
 
-    :param streamer: The streamer object.
+    :param description: The description for the endpoint.
+    :param streamer: The streamer object for the endpoint.
 
-    :return: The dictionary of the endpoint names and endpoint callbacks.
+    :return: The endpoint object.
     """
 
-    return {
-        AUTHENTICATE: streamer.authentication,
-        CLOSE: lambda controller, data: (
-            controller.close(),
-            streamer.subscribers.pop(controller, None),
-            (streamer.on_leave(controller, data) if streamer.on_leave else None)
+    return Endpoint(
+        name=SUBSCRIBE,
+        description=description or SUBSCRIBE_ENDPOINT_DESCRIPTION,
+        endpoint=lambda controller, data: (
+            streamer.subscribers[controller].subscribe(data.data)
         )
-    }
+    )
+
+def unsubscribe_endpoint(streamer: SubscriptionStreamer = None, description: str = None) -> Endpoint:
+    """
+    Creates an unsubscribe endpoint.
+
+    :param description: The description for the endpoint.
+    :param streamer: The streamer object for the endpoint.
+
+    :return: The endpoint object.
+    """
+
+    return Endpoint(
+        name=UNSUBSCRIBE,
+        description=description or UNSUBSCRIBE_ENDPOINT_DESCRIPTION,
+        endpoint=lambda controller, data: (
+            streamer.subscribers[controller].unsubscribe(data.data)
+        )
+    )
 
 def default_subscription_streamer_endpoints(
         streamer: SubscriptionStreamer
-) -> dict[str, Callable[[StreamController, Data], Any]]:
+) -> dict[str, Endpoint]:
     """
     Creates the default subscription streamer endpoints.
 
@@ -731,17 +932,7 @@ def default_subscription_streamer_endpoints(
     """
 
     return {
-        **default_streamer_endpoints(streamer),
-        PAUSE: lambda controller, _: (
-            controller.sender.pause()
-        ),
-        UNPAUSE: lambda controller, _: (
-            controller.sender.unpause()
-        ),
-        SUBSCRIBE: lambda controller, data: (
-            streamer.subscribers[controller].subscribe(data.data)
-        ),
-        UNSUBSCRIBE: lambda controller, data: (
-            streamer.subscribers[controller].unsubscribe(data.data)
-        )
+        **default_streamer_endpoints(streamer=streamer),
+        SUBSCRIBE: subscribe_endpoint(streamer=streamer),
+        UNSUBSCRIBE: unsubscribe_endpoint(streamer=streamer)
     }
