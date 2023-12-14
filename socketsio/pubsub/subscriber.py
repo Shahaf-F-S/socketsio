@@ -92,7 +92,7 @@ class ClientSubscriber:
     @staticmethod
     def authentication_message(data: Any) -> bytes:
         """
-        Returns the authentication message to the given events.
+        Returns the client_authentication message to the given events.
 
         :param data: The events to subscribe to.
 
@@ -147,9 +147,9 @@ class ClientSubscriber:
 
     def authenticate(self, data: Any) -> None:
         """
-        Sends an authentication request.
+        Sends an client_authentication request.
 
-        :param data: The authentication data.
+        :param data: The client_authentication data.
         """
 
         self.queue_socket.send(self.authentication_message(data=data))

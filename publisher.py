@@ -49,8 +49,9 @@ def main() -> None:
     streamer = SubscriptionStreamer(
         storage=storage,
         authenticate=lambda controller, data: Authorization(data.data in AUTHORIZED),
+        on_unauthenticated=lambda controller, data: (time.sleep(0.5), controller.close()),
         on_join=lambda controller: print(f"client connected: {controller.socket.address}"),
-        on_disconnect=lambda controller: print(f"client disconnected: {controller.socket.address}")
+        on_disconnect=lambda controller: print(f"client disconnected: {controller.socket.address}"),
     )
 
     server = Server()

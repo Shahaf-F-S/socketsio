@@ -48,7 +48,7 @@ __all__ = [
     "close_endpoint",
     "streamer_receive",
     "authentication_endpoint",
-    "authentication"
+    "client_authentication"
 ]
 
 TIME = "time"
@@ -83,7 +83,7 @@ class StreamController:
         :param termination: The termination callback.
         :param handler: The handler object.
         :param delay: The delay value.
-        :param authenticated: The value of authentication.
+        :param authenticated: The value of client_authentication.
         """
 
         if not isinstance(socket, SocketSenderQueue):
@@ -284,7 +284,7 @@ class Endpoint:
         return self.endpoint(controller, data)
 
 AUTHENTICATION_ENDPOINT_DESCRIPTION = (
-    "receives authentication "
+    "receives client_authentication "
     "data and grants access if authorized."
 )
 PAUSE_ENDPOINT_DESCRIPTION = (
@@ -303,57 +303,6 @@ CLOSE_ENDPOINT_DESCRIPTION = (
     "closes the connection."
 )
 
-def streamer_receive(
-        controller: StreamController,
-        endpoints: dict[str, Endpoint],
-        authenticate: bool = False
-) -> None:
-    """
-    Runs the receiving handler.
-
-    :param controller: The controller to pass to the handler.
-    :param endpoints: The endpoints of the service.
-    :param authenticate: The value to authenticate the client.
-    """
-
-    received = controller.socket.receive()[0]
-
-    if not received:
-        return
-
-    payload = {}
-
-    response = "invalid request"
-
-    try:
-        payload = Data.decode(received)
-        data = Data.load(payload)
-
-        if (
-            authenticate and
-            (data.name != AUTHENTICATE) and
-            (not controller.authenticated)
-        ):
-            response = "unauthenticated"
-
-            raise ValueError
-
-        endpoints[data.name](controller, data)
-
-    except (ValueError, TypeError, KeyError):
-        controller.queue_socket.send(
-            Data.encode(
-                Data(
-                    name=payload.get(Data.NAME, RESPONSE),
-                    time=time.time(),
-                    data={
-                        RESPONSE: response,
-                        REQUEST: payload
-                    }
-                )
-            )
-        )
-
 class Streamer:
     """A class to represent an endpoints based stream producer and handler."""
 
@@ -370,6 +319,8 @@ class Streamer:
             on_unauthorized: Callable[[StreamController, Data], Any] = None,
             on_leave: Callable[[StreamController, Data], Any] = None,
             on_disconnect: Callable[[StreamController], Any] = None,
+            on_invalid: Callable[[StreamController, Data], Any] = None,
+            on_unauthenticated: Callable[[StreamController, Data], Any] = None,
             endpoints: dict[str, Endpoint] = None,
             delay: float = None,
             autorun: bool = False
@@ -379,7 +330,7 @@ class Streamer:
 
         :param sender: The data sending handler.
         :param receiver: The data receiving handler.
-        :param authenticate: The authentication handler.
+        :param authenticate: The client_authentication handler.
         :param endpoints: The communication endpoints.
         :param constructor: The controller constructor.
         :param on_join: The callback to run for client join.
@@ -390,6 +341,8 @@ class Streamer:
         :param delay: The delay value for the controllers.
         :param autorun: The value to run controllers on creation.
         :param authenticate: The value to authenticate clients.
+        :param on_invalid: A callback to call after an invalid request.
+        :param on_unauthenticated: A callback to call when not authenticated.
         """
 
         self._delay = delay or self.MIN_DELAY
@@ -404,6 +357,8 @@ class Streamer:
         self.on_join = on_join
         self.constructor = constructor or StreamController
         self.authenticate = authenticate
+        self.on_invalid = on_invalid
+        self.on_unauthenticated = on_unauthenticated
         self.endpoints = {
             **default_streamer_endpoints(self),
             **(endpoints or {})
@@ -512,7 +467,9 @@ class Streamer:
                 streamer_receive(
                     controller=controller,
                     endpoints=self.endpoints,
-                    authenticate=self.authenticate is not None
+                    authenticate=self.authenticate is not None,
+                    on_invalid=self.on_invalid,
+                    on_unauthenticated=self.on_unauthenticated
                 )
             ),
             termination=lambda: self.on_disconnect(controller),
@@ -535,7 +492,80 @@ class Streamer:
 
         return controller
 
-def authentication(
+def streamer_receive(
+        controller: StreamController,
+        endpoints: dict[str, Endpoint],
+        authenticate: bool = False,
+        on_invalid: Callable[[StreamController, Data], Any] = None,
+        on_unauthenticated: Callable[[StreamController, Data], Any] = None
+) -> None:
+    """
+    Runs the receiving handler.
+
+    :param controller: The controller to pass to the handler.
+    :param endpoints: The endpoints of the service.
+    :param authenticate: The value to authenticate the client.
+    :param on_invalid: A callback to call after an invalid request.
+    :param on_unauthenticated: A callback to call when not authenticated.
+    """
+
+    received = controller.socket.receive()[0]
+
+    if not received:
+        return
+
+    payload = {}
+
+    response = "invalid request"
+
+    invalid = False
+    unauthenticated = False
+
+    data = None
+
+    try:
+        payload = Data.decode(received)
+        data = Data.load(payload)
+
+        if (
+                authenticate and
+                (data.name != AUTHENTICATE) and
+                (not controller.authenticated)
+        ):
+            response = "unauthenticated"
+
+            unauthenticated = True
+
+            raise ValueError
+
+        endpoints[data.name](controller, data)
+
+    except (ValueError, TypeError, KeyError):
+        invalid = not unauthenticated
+
+        controller.queue_socket.send(
+            Data.encode(
+                Data(
+                    name=payload.get(Data.NAME, RESPONSE),
+                    time=time.time(),
+                    data={
+                        RESPONSE: response,
+                        REQUEST: payload
+                    }
+                )
+            )
+        )
+
+    if (invalid and on_invalid) or (unauthenticated and on_unauthenticated):
+        data or Data.load(payload)
+
+    if invalid and on_invalid:
+        on_invalid(controller, data)
+
+    if unauthenticated and on_unauthenticated:
+        on_unauthenticated(controller, data)
+
+def client_authentication(
         authenticator: Callable[[StreamController, Data], Authorization],
         controller: StreamController,
         data: Data,
@@ -557,7 +587,7 @@ def authentication(
     if not authorization.authorized:
         response = (
             authorization.response or
-            "invalid authentication"
+            "unauthorized"
         )
 
     else:
@@ -627,7 +657,7 @@ def authentication_endpoint(
     """
 
     return Endpoint(
-        endpoint=lambda controller, data: authentication(
+        endpoint=lambda controller, data: client_authentication(
             authenticator=(
                 authenticator or
                 (streamer.authenticate if streamer else None) or
@@ -827,6 +857,8 @@ class SubscriptionStreamer(Streamer):
             on_unauthorized: Callable[[StreamController, Data], Any] = None,
             on_leave: Callable[[StreamController, Data], Any] = None,
             on_disconnect: Callable[[StreamController], Any] = None,
+            on_invalid: Callable[[StreamController, Data], Any] = None,
+            on_unauthenticated: Callable[[StreamController, Data], Any] = None,
             endpoints: dict[str, Endpoint] = None,
             storage: DataStore = None,
             delay: float = None,
@@ -838,7 +870,7 @@ class SubscriptionStreamer(Streamer):
 
         :param sender: The data sending handler.
         :param receiver: The data receiving handler.
-        :param authenticate: The authentication handler.
+        :param authenticate: The client_authentication handler.
         :param endpoints: The communication endpoints.
         :param on_join: The callback to run for client join.
         :param on_authorized: The callback to run for client authorized.
@@ -850,6 +882,8 @@ class SubscriptionStreamer(Streamer):
         :param subscriber: The subscriber base class.
         :param storage: The storage object.
         :param name: The data name.
+        :param on_invalid: A callback to call after an invalid request.
+        :param on_unauthenticated: A callback to call when not authenticated.
         """
 
         if storage is None and sender is None:
@@ -861,6 +895,7 @@ class SubscriptionStreamer(Streamer):
         self.subscriber = subscriber or ServerSubscriber
         self.name = name
         self.storage = storage
+
         self.subscribers: dict[StreamController, ServerSubscriber] = {}
 
         super().__init__(
@@ -881,7 +916,9 @@ class SubscriptionStreamer(Streamer):
             on_disconnect=on_disconnect,
             on_authorized=on_authorized,
             on_unauthorized=on_unauthorized,
+            on_invalid=on_invalid,
             on_leave=on_leave,
+            on_unauthenticated=on_unauthenticated,
             endpoints={
                 **default_subscription_streamer_endpoints(self),
                 **(endpoints or {})
