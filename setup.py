@@ -21,8 +21,8 @@ def main() -> None:
             "*.pyc"
         ],
         requirements="requirements.txt",
-        name='pysocketsio',
-        version='2.3.2',
+        name='sockets-io',
+        version='0.0.0',
         description=(
             "This module provides a wrapper for the built-in "
             "socket module in python. The program provides server and. "
