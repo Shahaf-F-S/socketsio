@@ -2,6 +2,12 @@
 
 > A python wrapper around the builtin socket module, for generalized communication protocols, unified socket interface, utility methods, and modular protocol swapping capeabilities. Including a socket based Pub/Sub system.
 
+## Installation
+
+```
+pip install sockets-io
+```
+
 ## examples
 
 basic server socket threading based
