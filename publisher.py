@@ -3,7 +3,7 @@
 import time
 import random
 
-from looperator import Operator
+from looperation import Operator
 from socketsio import Server
 
 from socketsio.pubsub import DataStore, Data, SubscriptionStreamer, Authorization

@@ -1,14 +1,8 @@
 # test.py
 
-import socket
-from typing import Tuple
-
 from socketsio import Client, Server, Socket, BHP, TCP, UDP
 
-from looperator import Handler, Operator
-
-Connection = socket.socket
-Address = Tuple[str, int]
+from looperation import Handler, Operator
 
 def action(server: Server, client: Socket) -> None:
     """
@@ -20,7 +14,7 @@ def action(server: Server, client: Socket) -> None:
 
     with Handler(
         exception_handler=print,
-        cleanup_callback=client.close
+        cleanup_callback=lambda h: client.close()
     ):
         while not (client.closed or server.closed):
             received, address = client.receive()

@@ -4,8 +4,6 @@ import json
 from typing import Any, Self, ClassVar, Iterable
 from dataclasses import dataclass
 
-from represent import represent
-
 __all__ = [
     "Data",
     "chain_names",
@@ -44,8 +42,7 @@ def unchain_names(chain: str, separator: str = ".") -> list[str]:
 
     return chain.split(separator)
 
-@represent
-@dataclass(repr=False)
+@dataclass
 class Data:
     """A class to represent a data container message."""
 

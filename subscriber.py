@@ -1,6 +1,6 @@
 # subscriber.py
 
-from looperator import Handler
+from looperation import Handler
 from socketsio import Client
 
 from socketsio.pubsub import ClientSubscriber, DataStore, Data
@@ -25,7 +25,7 @@ def main() -> None:
     subscriber.subscribe(['AAPL', "AMZN", "GOOG"])
 
     with Handler(
-        exception_callback=client.close,
+        exception_callback=lambda h: client.close(),
         exception_handler=print
     ):
         while True:

@@ -4,8 +4,6 @@ import socket
 from typing import Callable
 from abc import ABCMeta, abstractmethod
 
-from represent import represent
-
 __all__ = [
     "BufferedProtocol",
     "BaseProtocol",
@@ -84,7 +82,6 @@ def udp_bluetooth_socket() -> socket.socket:
 
 ProtocolConstructor = Callable[[], "BaseProtocol"] | "BaseProtocol"
 
-@represent
 class BaseProtocol(metaclass=ABCMeta):
     """Defines the basic parameters for the communication."""
 

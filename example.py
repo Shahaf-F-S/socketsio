@@ -1,26 +1,14 @@
 # example.py
 
-import socket
-from typing import Tuple
-
 from socketsio import Client, Server, Socket
 
-from looperator import Handler, Operator
-
-Connection = socket.socket
-Address = Tuple[str, int]
+from looperation import Handler, Operator
 
 def action(server: Server, client: Socket) -> None:
-    """
-    Sets or updates clients data in the clients' container .
-
-    :param server: The server controlling the communication.
-    :param client: The client socket object.
-    """
 
     with Handler(
         exception_handler=print,
-        cleanup_callback=client.close
+        cleanup_callback=lambda h: client.close()
     ):
         while not (client.closed or server.closed):
             received, address = client.receive()

@@ -4,9 +4,7 @@ import time
 from typing import Callable, Any, Iterable, overload
 from dataclasses import dataclass
 
-from represent import represent
-
-from looperator import Operator, Handler
+from looperation import Operator, Handler
 from socketsio import SocketSenderQueue, Socket
 
 from socketsio.pubsub.data import Data
@@ -114,9 +112,9 @@ class StreamController:
 
         saved_callback = handler.exception_callback
 
-        handler.exception_callback = lambda: (
+        handler.exception_callback = lambda h: (
             self.queue_socket.stop(),
-            (saved_callback() if saved_callback else None)
+            (saved_callback(h) if saved_callback else None)
         )
 
         self.queue_socket.handler = handler
@@ -244,8 +242,7 @@ class StreamController:
         self.stop()
         self.queue_socket.close()
 
-@represent
-@dataclass(repr=False)
+@dataclass
 class Authorization:
     """A class to represent an authorization object."""
 
@@ -428,7 +425,7 @@ class Streamer:
     def controller(
             self,
             socket: Socket,
-            exception_handler: Callable[[Exception], Any] = None,
+            exception_handler: Callable[[Handler, Exception], Any] = None,
             run: bool = None,
             send: bool = True,
             receive: bool = True,
@@ -476,7 +473,7 @@ class Streamer:
             handler=Handler(
                 exception_handler=exception_handler,
                 catch=exception_handler is not None,
-                exception_callback=lambda: (
+                exception_callback=lambda h: (
                     self.clients.pop(socket.address, None)
                 )
             )

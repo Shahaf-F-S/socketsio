@@ -4,8 +4,6 @@ import socket
 from typing import Any, Callable, Self
 import threading
 
-from represent import Modifiers
-
 from socketsio.protocols import BaseProtocol
 from socketsio.sockets import Socket
 
@@ -102,9 +100,6 @@ class ServerSideClient(Socket):
 
 class Server(Socket):
     """A class to represent the server object."""
-
-    __modifiers__ = Modifiers(**Socket.__modifiers__.copy())
-    __modifiers__.properties.extend(["listening", "bound"])
 
     DELAY = 0.0001
 

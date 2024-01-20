@@ -8,8 +8,6 @@ from socketsio.protocols import (
     tcp_bluetooth_socket, is_tcp, is_tcp_bluetooth, is_udp_bluetooth
 )
 
-from represent import represent, Modifiers
-
 __all__ = [
     "Socket",
     "tcp_socket",
@@ -21,14 +19,8 @@ Connection = socket.socket
 Address = tuple[str, int]
 Output = tuple[bytes, Address | None]
 
-@represent
 class Socket:
     """A socket connection I/O object."""
-
-    __modifiers__ = Modifiers(
-        excluded=["connection"],
-        properties=["reusable", "closed", "address"]
-    )
 
     def __init__(
             self,

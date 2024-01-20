@@ -4,7 +4,7 @@ import datetime as dt
 from typing import Callable, Any
 import socket as _socket
 
-from looperator import Operator, Handler
+from looperation import Operator, Handler
 
 from socketsio.sockets import Socket
 
